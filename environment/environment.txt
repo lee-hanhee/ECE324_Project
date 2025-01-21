@@ -1,0 +1,4 @@
+Purpose: Store environment setup files for reproducibility.
+Examples:
+requirements.txt: Python dependencies.
+environment.yml: Conda environment file.

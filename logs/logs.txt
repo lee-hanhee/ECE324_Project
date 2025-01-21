@@ -1,0 +1,6 @@
+Purpose: Store logs generated during training, testing, or evaluation.
+Examples:
+train_logs/: Logs from training runs.
+eval_logs/: Logs from evaluation runs.
+Notes:
+Automate log creation using tools like TensorBoard or WandB.
