@@ -8,7 +8,7 @@ from IPython.display import Audio
 from scipy.io import wavfile
 
 
-wav_file_name = 'miaow_16k.wav'
+wav_file_name = '__.wav'
 sample_rate, wav_data = wavfile.read(wav_file_name, 'rb')
 
 # Show some basic information about the audio.
