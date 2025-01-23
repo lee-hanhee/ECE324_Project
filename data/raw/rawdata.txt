@@ -1,4 +1,0 @@
-Original, unprocessed data.
-
-Avoid storing large datasets directly; instead, use scripts to download them or store them in a data storage solution (e.g., AWS S3, GCS).
-Include a README.md or data_info.txt explaining the data sources and how to load them.
