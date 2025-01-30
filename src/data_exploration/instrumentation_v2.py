@@ -3,6 +3,7 @@ import yaml
 import csv
 import matplotlib.pyplot as plt
 from collections import Counter
+from figures import save_to_summary
 
 # Define the path to the directory containing the tracks
 # base_path = "../../data/raw"
@@ -41,18 +42,13 @@ def extract_instrument_data(base_path):
     return instrument_distributions, instrument_counts
 
 def save_instrument_counts(instrument_counts):
-    # output_file = os.path.join("../../results/metrics", "data_summary.csv")
-    # os.makedirs("../../results/metrics", exist_ok=True)
-    output_file = os.path.join("results/metrics", "data_summary.csv")
-    os.makedirs("results/metrics", exist_ok=True)
-
-    with open(output_file, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["Track", "Instrument Count"])  # Header row
-        for track, count in instrument_counts.items():
-            writer.writerow([track, count])
-
-    print(f"Instrument counts saved at {output_file}")
+    instrument_dict = {
+    "TrackName": list(instrument_counts.keys()),
+    "TrackNumber": list(range(1, len(instrument_counts) + 1)),
+    "Number of Instruments": list(instrument_counts.values()),
+    }
+    
+    save_to_summary(instrument_dict)
 
 def plot_instrument_distributions(instrument_distributions):
     for track, distribution in instrument_distributions.items():
@@ -73,13 +69,14 @@ def plot_instrument_distributions(instrument_distributions):
 
         print(f"Saved bar graph for {track} at {output_file}")
 
-def main():
+def main(to_plot):
     instrument_distributions, instrument_counts = extract_instrument_data(base_path)
-    plot_instrument_distributions(instrument_distributions)
+    if to_plot:
+        plot_instrument_distributions(instrument_distributions)
     save_instrument_counts(instrument_counts)
 
 if __name__ == "__main__":
-    main()
+    main(False)
     
 '''
 PROMPT for ChatGPT:

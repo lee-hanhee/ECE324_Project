@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import csv
 import os
+from figures import save_to_summary
 
 
 def get_frequency_range(y, sr):
@@ -57,23 +58,9 @@ def plot_frequencies(df_frequencies):
     plt.title("Audio Frequency Ranges (Min to Max)")
     plt.show()
 
-# def save_info(durations, frequencies):
-#     output_file = os.path.join("results/metrics", "data_summary.csv")
-#     os.makedirs("results/metrics", exist_ok=True)
-
-#     with open(output_file, "w", newline="") as file:
-#         writer = csv.writer(file)
-#         writer.writerow(["Track", "Instrument Count"])  # Header row
-#         for track, count in durations.items():
-#             writer.writerow([track, count])
-
-#     print(f"Instrument counts saved at {output_file}")
-
-
 if __name__ == "__main__":
     base_path = "data/raw"
-    frequency_data = []
-    duration_data = []
+    data = {"TrackName": [], "Min Frequency": [], "Max Frequency": [], "Duration": []}
 
     for i in range(1, 21):  # Tracks are numbered from 1 to 20
         track_name = f"Track{i:05d}"
@@ -87,30 +74,23 @@ if __name__ == "__main__":
                 min_freq, max_freq = get_frequency_range(y, sr)
 
                 # Store frequency data separately
-                frequency_data.append({
-                    "Track": track_name,
-                    "Min Frequency (Hz)": min_freq,
-                    "Max Frequency (Hz)": max_freq
-                })
-
-                # Store duration data separately
-                duration_data.append({
-                    "Track": track_name,
-                    "Duration (s)": duration
-                })
+                data["TrackName"].append(track_name)
+                data["Min Frequency"].append(min_freq)
+                data["Max Frequency"].append(max_freq)
+                data["Duration"].append(duration)
 
             except Exception as e:
                 print(f"Error processing {wav_file}: {e}")
-
+    save_to_summary(data)
     # Convert to DataFrames and display separately
-    df_frequencies = pd.DataFrame(frequency_data)
-    df_durations = pd.DataFrame(duration_data)
+    # df_frequencies = pd.DataFrame(frequency_data)
+    # df_durations = pd.DataFrame(duration_data)
     # save_info(duration_data, frequency_data)
 
 
     # Call the functions to generate plots
-    plot_durations(df_durations)
-    plot_frequencies(df_frequencies)
+    # plot_durations(df_durations)
+    # plot_frequencies(df_frequencies)
 
 
     #print("Audio Frequency Ranges:")
