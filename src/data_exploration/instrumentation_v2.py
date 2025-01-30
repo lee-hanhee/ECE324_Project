@@ -1,10 +1,12 @@
 import os
 import yaml
+import csv
 import matplotlib.pyplot as plt
 from collections import Counter
 
 # Define the path to the directory containing the tracks
-base_path = "../../data/raw"
+# base_path = "../../data/raw"
+base_path = "data/raw"
 
 def extract_instrument_data(base_path):
     # Dictionary to store instrument distributions for each track
@@ -39,12 +41,16 @@ def extract_instrument_data(base_path):
     return instrument_distributions, instrument_counts
 
 def save_instrument_counts(instrument_counts):
-    output_file = os.path.join("../../results/metrics", "inst_counts.txt")
-    os.makedirs("../../results/metrics", exist_ok=True)
+    # output_file = os.path.join("../../results/metrics", "data_summary.csv")
+    # os.makedirs("../../results/metrics", exist_ok=True)
+    output_file = os.path.join("results/metrics", "data_summary.csv")
+    os.makedirs("results/metrics", exist_ok=True)
 
-    with open(output_file, "w") as file:
+    with open(output_file, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Track", "Instrument Count"])  # Header row
         for track, count in instrument_counts.items():
-            file.write(f"{track}: {count} instruments\n")
+            writer.writerow([track, count])
 
     print(f"Instrument counts saved at {output_file}")
 

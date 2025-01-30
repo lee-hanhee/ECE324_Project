@@ -5,6 +5,8 @@ import numpy as np
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
+import csv
+import os
 
 
 def get_frequency_range(y, sr):
@@ -55,6 +57,19 @@ def plot_frequencies(df_frequencies):
     plt.title("Audio Frequency Ranges (Min to Max)")
     plt.show()
 
+def save_info(durations, frequencies):
+    output_file = os.path.join("results/metrics", "data_summary.csv")
+    os.makedirs("results/metrics", exist_ok=True)
+
+    with open(output_file, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Track", "Instrument Count"])  # Header row
+        for track, count in instrument_counts.items():
+            writer.writerow([track, count])
+
+    print(f"Instrument counts saved at {output_file}")
+
+
 if __name__ == "__main__":
     base_path = "data/raw"
     frequency_data = []
@@ -90,6 +105,7 @@ if __name__ == "__main__":
     # Convert to DataFrames and display separately
     df_frequencies = pd.DataFrame(frequency_data)
     df_durations = pd.DataFrame(duration_data)
+    save_info(duration_data, frequency_data)
 
 
     # Call the functions to generate plots
