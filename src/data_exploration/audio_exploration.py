@@ -1,1 +1,110 @@
-print("Hello there")
+import librosa
+import librosa.display
+import soundfile as sf
+import numpy as np
+from pathlib import Path
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+def get_frequency_range(y, sr):
+    """Estimate the minimum and maximum frequency range in the audio signal."""
+    D = np.abs(librosa.stft(y))  # Compute Short-Time Fourier Transform (STFT)
+    frequencies = librosa.fft_frequencies(sr=sr)
+    
+    # Compute the magnitude spectrum
+    avg_spectrum = np.mean(D, axis=1)  # Average across time frames
+    threshold = np.max(avg_spectrum) * 0.01  # Consider significant frequencies above 1% of max energy
+    
+    # Find frequency range
+    valid_freqs = frequencies[avg_spectrum > threshold]
+    if len(valid_freqs) > 0:
+        min_freq = np.min(valid_freqs)
+        max_freq = np.max(valid_freqs)
+    else:
+        min_freq, max_freq = 0, 0  # If no valid frequencies are found
+
+    return min_freq, max_freq
+
+def get_audio_duration(file_path):
+    """Get duration of an audio file in seconds."""
+    with sf.SoundFile(file_path) as f:
+        return len(f) / f.samplerate  # Total samples / sample rate
+    
+# Function to plot durations
+def plot_durations(df_durations):
+    plt.figure(figsize=(12, 6))
+    plt.bar(df_durations["Track"], df_durations["Duration (s)"], color='b', alpha=0.7)
+    plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Track")
+    plt.ylabel("Duration (seconds)")
+    plt.title("Audio Track Durations")
+    plt.show()
+
+# Function to plot frequency ranges
+def plot_frequencies(df_frequencies):
+    plt.figure(figsize=(12, 6))
+    for i in range(len(df_frequencies)):
+        plt.plot([df_frequencies["Track"][i], df_frequencies["Track"][i]],
+                 [df_frequencies["Min Frequency (Hz)"][i], df_frequencies["Max Frequency (Hz)"][i]],
+                 marker='o', color='r', linestyle='-', alpha=0.7)
+
+    plt.xticks(rotation=45, ha="right")
+    plt.xlabel("Track")
+    plt.ylabel("Frequency (Hz)")
+    plt.title("Audio Frequency Ranges (Min to Max)")
+    plt.show()
+
+if __name__ == "__main__":
+    base_path = "data/raw"
+    frequency_data = []
+    duration_data = []
+
+    for i in range(1, 21):  # Tracks are numbered from 1 to 20
+        track_name = f"Track{i:05d}"
+        wav_file = Path(base_path) / track_name / "mix.wav"
+
+        if wav_file.exists():
+            try:
+                # Load audio file
+                y, sr = librosa.load(wav_file, sr=None)  # Load at original sample rate
+                duration = get_audio_duration(wav_file)
+                min_freq, max_freq = get_frequency_range(y, sr)
+
+                # Store frequency data separately
+                frequency_data.append({
+                    "Track": track_name,
+                    "Min Frequency (Hz)": min_freq,
+                    "Max Frequency (Hz)": max_freq
+                })
+
+                # Store duration data separately
+                duration_data.append({
+                    "Track": track_name,
+                    "Duration (s)": duration
+                })
+
+            except Exception as e:
+                print(f"Error processing {wav_file}: {e}")
+
+    # Convert to DataFrames and display separately
+    df_frequencies = pd.DataFrame(frequency_data)
+    df_durations = pd.DataFrame(duration_data)
+
+
+    # Call the functions to generate plots
+    plot_durations(df_durations)
+    plot_frequencies(df_frequencies)
+
+
+    #print("Audio Frequency Ranges:")
+    #print(df_frequencies)
+
+    #print("\nAudio Durations:")
+    #print(df_durations)
+
+
+
+
+
+
