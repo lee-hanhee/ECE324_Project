@@ -6,6 +6,7 @@ from pathlib import Path
 import librosa
 import librosa.display
 import seaborn as sns
+import pandas as pd
 
 
 def save_info(wav_data, sample_rate):
@@ -15,16 +16,34 @@ def save_info(wav_data, sample_rate):
   print(f'Size of the input: {len(wav_data)}')
   return wav_data, sample_rate
 
-def plot_spectrogram(mix_wav_data, instrument_wav_datas, sample_rate, track_name):
-  plt.figure(figsize=(10, 6))
-  plt.specgram(mix_wav_data, Fs=sample_rate, NFFT=1024, noverlap=512, cmap='viridis')
-  plt.title('Spectrogram of mix.wav')
-  plt.xlabel('Time (s)')
-  plt.ylabel('Frequency (Hz)')
-  plt.colorbar(label='Intensity (dB)')
-  plt.tight_layout()
-  image_path = "results/spectrograms/" + track_name + "-spectrogram.png"
-  plt.savefig(image_path)
+def plot_spectrograms(mix_wav_data, instrument_wav_datas, sample_rate, track_name):
+    num_instruments = len(instrument_wav_datas)
+    total_plots = num_instruments + 1
+    
+    plt.figure(figsize=(12, 3 * total_plots))
+    
+    plt.subplot(total_plots, 1, 1)
+    plt.specgram(mix_wav_data, Fs=sample_rate, NFFT=1024, noverlap=512, cmap='viridis')
+    plt.title('Spectrogram of mix.wav')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Frequency (Hz)')
+    plt.colorbar(label='Intensity (dB)')
+    
+    for i, (instrument_name, instrument_wav) in enumerate(instrument_wav_datas.items()):
+        plt.subplot(total_plots, 1, i + 2)
+        plt.specgram(instrument_wav, Fs=sample_rate, NFFT=1024, noverlap=512, cmap='viridis')
+        plt.title(f'Spectrogram of {instrument_name}.wav')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Frequency (Hz)')
+        plt.colorbar(label='Intensity (dB)')
+    
+    plt.tight_layout()
+    image_path = f"results/spectrograms/{track_name}-spectrogram.png"
+    plt.savefig(image_path)
+    plt.close()
+    
+    return image_path
+
 
 def plot_waveform(y, sr, track_name):
   plt.figure(figsize=(10, 4))
@@ -55,18 +74,27 @@ def plot_boxplot_histogram(rms_values):
     plt.savefig(image_path)
 
 if __name__ == "__main__":
+  df = pd.read_csv('results/metrics/data_summary.csv')
+
   base_path = "data/raw"
   rms = []
-  instrument_data = []
+  instrument_data = {}
   for i in range(1, 21):  # Tracks are numbered from 1 to 20
     track_name = f"Track{i:05d}"
     wav_file = Path(base_path) / track_name  / "mix.wav"
-    sample_rate, wav_data = wavfile.read(wav_file, 'rb')
+    sample_rate, wav_mix_data = wavfile.read(wav_file, 'rb')
+    for inst in range(df["Number of Instruments"][i-1]):
+        stem_name = f"S{i:02d}.wav"
+        inst_file = Path(base_path) / track_name  / Path("stems") / stem_name
+        _, wav_inst_data = wavfile.read(wav_file, 'rb')
+        instrument_data[stem_name] = wav_inst_data
+
+    plot_spectrograms(wav_mix_data, instrument_data, sample_rate, track_name)
     y, sr = librosa.load(wav_file)
-    # plot_spectrogram(wav_data, sample_rate, track_name)
-    # plot_waveform(y, sr, track_name)
     rms.append(calculate_rms(y))
+    plot_waveform(y, sr, track_name)
     print("Done " + track_name)
+
   plot_boxplot_histogram(rms)
 
 
