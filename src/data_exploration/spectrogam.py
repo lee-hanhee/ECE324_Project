@@ -53,6 +53,7 @@ def plot_waveform(y, sr, track_name):
   plt.ylabel('Amplitude')
   image_path = "results/waveforms/" + track_name + "-waveforms.png"
   plt.savefig(image_path)
+  plt.close()
 
 def calculate_rms(audio):
     return np.sqrt(np.mean(np.square(audio)))
@@ -72,9 +73,14 @@ def plot_boxplot_histogram(rms_values):
     plt.ylabel('RMS (Volume Level)')
     image_path = "results/volume_histogram.png"
     plt.savefig(image_path)
+    plt.close()
 
 if __name__ == "__main__":
   df = pd.read_csv('results/metrics/data_summary.csv')
+
+  # for i in range(20):
+  #   print(df["Number of Instruments"][i])
+
 
   base_path = "data/raw"
   rms = []
@@ -82,12 +88,19 @@ if __name__ == "__main__":
   for i in range(1, 21):  # Tracks are numbered from 1 to 20
     track_name = f"Track{i:05d}"
     wav_file = Path(base_path) / track_name  / "mix.wav"
+    print(wav_file)
     sample_rate, wav_mix_data = wavfile.read(wav_file, 'rb')
     for inst in range(df["Number of Instruments"][i-1]):
-        stem_name = f"S{i:02d}.wav"
+        stem_name = f"S{inst:02d}.wav"
+        stem  = f"S{inst:02d}"
         inst_file = Path(base_path) / track_name  / Path("stems") / stem_name
-        _, wav_inst_data = wavfile.read(wav_file, 'rb')
-        instrument_data[stem_name] = wav_inst_data
+        print(inst_file)
+        try:
+          _, wav_inst_data = wavfile.read(inst_file, 'rb')
+          instrument_data[stem] = wav_inst_data
+        except:
+           continue
+        
 
     plot_spectrograms(wav_mix_data, instrument_data, sample_rate, track_name)
     y, sr = librosa.load(wav_file)
