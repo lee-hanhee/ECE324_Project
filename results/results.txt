@@ -1,5 +1,0 @@
-Purpose: Store outputs such as model predictions, evaluation metrics, and visualizations.
-Examples:
-predictions/: Inference results.
-metrics/: Evaluation metrics.
-plots/: Visualizations of model performance (e.g., confusion matrices, ROC curves).
