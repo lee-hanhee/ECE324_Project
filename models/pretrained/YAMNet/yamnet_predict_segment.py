@@ -5,6 +5,7 @@ import csv
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 import os
+from pathlib import Path
 
 
 class YAMNetClassifier:
@@ -32,8 +33,8 @@ class YAMNetClassifier:
             raise ValueError(f'Sample rate must be {desired_sample_rate} Hz, got {sample_rate} Hz instead.')
         return waveform
 
-    def classify_sound(self, wav_file_path):
-        """Classify the main sound from the provided WAV file."""
+    def classify_sound(self, wav_file_path, result_fig_path):
+        """Classify the main sound from the provided WAV file and save figure."""
         sample_rate, wav_data = wavfile.read(wav_file_path)
         wav_data = self._ensure_sample_rate(sample_rate, wav_data)
         waveform = wav_data / tf.int16.max
@@ -45,10 +46,10 @@ class YAMNetClassifier:
         inferred_class = self.class_names[scores_np.mean(axis=0).argmax()]
 
         print(f'File: {os.path.basename(wav_file_path)} classified as: {inferred_class}')
-        
-        self._visualize_results(waveform, spectrogram_np, scores_np)
 
-    def _visualize_results(self, waveform, spectrogram_np, scores_np, top_n=10):
+        self._visualize_results(waveform, spectrogram_np, scores_np, result_fig_path)
+
+    def _visualize_results(self, waveform, spectrogram_np, scores_np, result_fig_path, top_n=10):
         """Visualize waveform, spectrogram, and top predicted classes."""
         plt.figure(figsize=(10, 8))
 
@@ -73,20 +74,27 @@ class YAMNetClassifier:
         plt.xlim([-patch_padding - 0.5, scores_np.shape[0] + patch_padding - 0.5])
 
         plt.tight_layout()
-        plt.show()
+        plt.savefig(result_fig_path)
+        plt.close()
 
 
 if __name__ == "__main__":
     classifier = YAMNetClassifier()
 
-    # Process WAV files numbered from 1 to 20
-    base_dir = 'data/processed/yamnet/'
+    base_dir = Path('data/processed/yamnet/')
+    result_base_dir = Path('results/yamnet_predictions/')
 
-    for i in range(1, 21):
-        filename = f'Track{str(i).zfill(5 if i < 10 else 4)}.wav'
-        file_path = os.path.join(base_dir, filename)
+    for track_num in range(1, 21):
+        track_folder = f"Track0000{track_num}" if track_num < 10 else f"Track000{track_num}"
+        segments_folder = base_dir / track_folder / 'segments'
+        result_folder = result_base_dir / track_folder
 
-        if os.path.exists(file_path):
-            classifier.classify_sound(file_path)
+        result_folder.mkdir(parents=True, exist_ok=True)
+
+        if segments_folder.exists():
+            for segment_file in sorted(segments_folder.glob('segment_*.wav')):
+                segment_number = segment_file.stem.split('_')[1]
+                result_fig_path = result_folder / f"segment_{segment_number}.png"
+                classifier.classify_sound(segment_file, result_fig_path)
         else:
-            print(f'File not found: {file_path}')
+            print(f'Segments not found: {segments_folder}')
