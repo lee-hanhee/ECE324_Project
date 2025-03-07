@@ -7,6 +7,7 @@ import soundfile as sf
 RAW_DATA_PATH = Path("data/raw")
 PROCESSED_DATA_PATH = Path("data/processed/yamnet")
 TARGET_SR = 16000
+SEGMENT_DURATION = 20  # seconds
 
 
 def preprocess_audio(input_path: Path, output_path: Path, target_sr: int):
@@ -15,20 +16,34 @@ def preprocess_audio(input_path: Path, output_path: Path, target_sr: int):
     sf.write(output_path, audio, samplerate=target_sr)
 
 
+def split_audio(audio_path: Path, segment_folder: Path, target_sr: int, segment_duration: int):
+    audio, _ = librosa.load(audio_path, sr=target_sr, mono=True)
+    segment_samples = segment_duration * target_sr
+
+    segment_folder.mkdir(parents=True, exist_ok=True)
+
+    for idx, start in enumerate(range(0, len(audio), segment_samples)):
+        segment_audio = audio[start:start + segment_samples]
+        segment_filename = segment_folder / f"segment_{idx + 1}.wav"
+        sf.write(segment_filename, segment_audio, samplerate=target_sr)
+
+
 def main():
-    """Preprocess all audio files for YAMNet."""
+    """Preprocess all audio files for YAMNet and split into segments."""
     for track_num in range(1, 21):
         track_folder = f"Track0000{track_num}" if track_num < 10 else f"Track000{track_num}"
 
         input_filename = RAW_DATA_PATH / track_folder / "mix.wav"
         output_folder = PROCESSED_DATA_PATH / track_folder
         output_filename = output_folder / "mix.wav"
+        segments_folder = output_folder / "segments"
 
         output_folder.mkdir(parents=True, exist_ok=True)
 
         if input_filename.exists():
             preprocess_audio(input_filename, output_filename, TARGET_SR)
-            print(f"Processed {input_filename} → {output_filename}")
+            split_audio(output_filename, segments_folder, TARGET_SR, SEGMENT_DURATION)
+            print(f"Processed and segmented {input_filename} → {output_filename}")
         else:
             print(f"File not found: {input_filename}")
 
