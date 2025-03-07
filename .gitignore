@@ -91,3 +91,4 @@ target/
 
 # Ignore virtual environment
 venv/
+yamnet_nev/
