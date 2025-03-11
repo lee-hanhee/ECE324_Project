@@ -82,6 +82,19 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"Error processing {wav_file}: {e}")
     save_to_summary(data)
+
+
+    df = pd.DataFrame(data)
+
+    # Compute averages
+    avg_min_freq = np.mean(df["Min Frequency"]) if not df.empty else 0
+    avg_max_freq = np.mean(df["Max Frequency"]) if not df.empty else 0
+    avg_duration = np.mean(df["Duration"]) if not df.empty else 0
+
+    # Print results
+    print(f"\nAverage Minimum Frequency: {avg_min_freq:.2f} Hz")
+    print(f"Average Maximum Frequency: {avg_max_freq:.2f} Hz")
+    print(f"Average Track Duration: {avg_duration:.2f} seconds")2
     # Convert to DataFrames and display separately
     # df_frequencies = pd.DataFrame(frequency_data)
     # df_durations = pd.DataFrame(duration_data)
