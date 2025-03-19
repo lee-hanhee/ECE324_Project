@@ -128,9 +128,16 @@ scatter = sns.scatterplot(
 # Improve legend readability
 plt.legend(title="Instrument Class", bbox_to_anchor=(1.05, 1), loc='upper left')
 
-plt.title("UMAP Projection of Individual Stems (Enhanced Features)")
-plt.xlabel("UMAP Component 1")
-plt.ylabel("UMAP Component 2")
+# Increase font sizes
+plt.title("UMAP Projection of Individual Stems - MFCC", fontsize=20)  # Bigger title
+plt.xlabel("UMAP Component 1", fontsize=16)  # Bigger X-axis label
+plt.ylabel("UMAP Component 2", fontsize=16)  # Bigger Y-axis label
+
+# Increase tick font size
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+
 plt.tight_layout()  # Adjust layout to fit elements within the figure
 
 plt.show()
+
