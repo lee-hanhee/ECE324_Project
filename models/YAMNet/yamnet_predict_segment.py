@@ -77,7 +77,6 @@ class YAMNetClassifier:
         plt.savefig(result_fig_path)
         plt.close()
 
-
 if __name__ == "__main__":
     classifier = YAMNetClassifier()
 
