@@ -80,7 +80,7 @@ class YAMNetClassifier:
         frames = np.arange(scores_np.shape[0])
 
         # Limit to the first 10 frames
-        frame_limit = min(10, scores_np.shape[0])
+        frame_limit = scores_np.shape[0]
 
         # Flip class order so that the most confident predictions appear at the top
         plt.imshow(scores_np[:frame_limit, top_class_indices].T, aspect='auto', interpolation='nearest', cmap='gray_r',
