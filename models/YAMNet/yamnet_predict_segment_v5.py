@@ -99,7 +99,7 @@ class YAMNetClassifier:
 if __name__ == "__main__":
     classifier = YAMNetClassifier()
 
-    base_dir = Path('raw/')
+    base_dir = Path('data/raw/')
     result_base_dir = Path('results/yamnet_predictions/')
 
     for track_num in range(1, 21):
