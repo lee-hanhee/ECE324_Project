@@ -45,7 +45,7 @@ def save_instrument_counts(instrument_counts):
     instrument_dict = {
     "TrackName": list(instrument_counts.keys()),
     "TrackNumber": list(range(1, len(instrument_counts) + 1)),
-    "Number of Instruments": list(instrument_counts.values()),
+    "Number of Instruments": list(instrument_counts.values())
     }
     
     save_to_summary(instrument_dict)
@@ -73,7 +73,23 @@ def main(to_plot):
     instrument_distributions, instrument_counts = extract_instrument_data(base_path)
     if to_plot:
         plot_instrument_distributions(instrument_distributions)
-    save_instrument_counts(instrument_counts)
+    # save_instrument_counts(instrument_counts, instrument_distributions)
+    all_instruments = sorted({inst for track in instrument_distributions.values() for inst in track})
+
+    # Creates track_instruments one-hot-encoding
+    # Write to CSV
+    with open("track_instruments.csv", "w", newline="") as file:
+        writer = csv.writer(file)
+        
+        # Write header
+        writer.writerow(["TrackName"] + all_instruments)
+        
+        # Write rows
+        for track, instruments in instrument_distributions.items():
+            row = [track] + [instruments.get(inst, 0) for inst in all_instruments]
+            writer.writerow(row)
+
+    print("CSV file saved as track_instruments.csv")
 
 if __name__ == "__main__":
     main(False)

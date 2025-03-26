@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # Print results
     print(f"\nAverage Minimum Frequency: {avg_min_freq:.2f} Hz")
     print(f"Average Maximum Frequency: {avg_max_freq:.2f} Hz")
-    print(f"Average Track Duration: {avg_duration:.2f} seconds")2
+    print(f"Average Track Duration: {avg_duration:.2f} seconds")
     # Convert to DataFrames and display separately
     # df_frequencies = pd.DataFrame(frequency_data)
     # df_durations = pd.DataFrame(duration_data)
