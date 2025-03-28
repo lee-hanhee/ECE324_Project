@@ -6,11 +6,11 @@ import soundfile as sf
 
 # Base directory for instrument files
 INSTRUMENTS_DIR = "data/instruments"
-OUTPUT_DIR = os.path.join(INSTRUMENTS_DIR, "Combined_instruments")
+OUTPUT_DIR = os.path.join(INSTRUMENTS_DIR, "combined")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Instruments to combine
-instrument_list = ["Piano", "Drums", "Guitar", "Bass"]
+instrument_list = ["Piano", "Drums", "Guitar", "Bass", "Strings"]
 
 # How many mixes per combination
 mixes_per_combination = 5  # You can increase this

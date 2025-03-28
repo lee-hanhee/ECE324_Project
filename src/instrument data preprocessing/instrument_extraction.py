@@ -2,8 +2,9 @@ import os
 import yaml
 import shutil
 from glob import glob
+from collections import defaultdict
 
-# Adjust this path if needed!
+# Base directories
 BASE_DIR = "data"
 RAW_DIR = os.path.join(BASE_DIR, "raw")
 INSTRUMENTS_DIR = os.path.join(BASE_DIR, "instruments")
@@ -18,6 +19,9 @@ if not track_dirs:
     print("No track directories found! Check your path.")
 else:
     print(f"Found {len(track_dirs)} track directories.")
+
+# Dictionary to keep track of how many files we've copied for each instrument
+instrument_counters = defaultdict(int)
 
 for track_dir in track_dirs:
     metadata_path = os.path.join(track_dir, "metadata.yaml")
@@ -47,12 +51,26 @@ for track_dir in track_dirs:
             print(f"Missing WAV file: {wav_src_path}")
             continue
 
-        inst_folder = os.path.join(INSTRUMENTS_DIR, inst_class)
+        # Standardize instrument name to lowercase
+        inst_class_lower = inst_class.lower()
+        inst_folder = os.path.join(INSTRUMENTS_DIR, inst_class_lower)
+        if inst_class_lower == "strings (continued)":
+            # Special case for "strings (continued)" to avoid confusion
+            inst_class_lower = "strings"
         os.makedirs(inst_folder, exist_ok=True)
 
-        dest_path = os.path.join(inst_folder, f"{os.path.basename(track_dir)}_{wav_filename}")
-        shutil.copy2(wav_src_path, dest_path)
+        # Use the current count for naming
+        file_index = instrument_counters[inst_class_lower]
+        if inst_class_lower == "strings (continued)":
+            # Special case for "strings (continued)" to avoid confusion
+            inst_class_lower = "strings_"
+        dest_filename = f"{inst_class_lower}_{file_index}.wav"
+        dest_path = os.path.join(inst_folder, dest_filename)
 
-        print(f"Copied {wav_filename} -> {inst_class}/")
+        # Copy and update counter
+        shutil.copy2(wav_src_path, dest_path)
+        instrument_counters[inst_class_lower] += 1
+
+        print(f"Copied {wav_filename} -> {inst_class_lower}/{dest_filename}")
 
 print("Done.")
