@@ -1,0 +1,272 @@
+import torch
+import librosa
+import torchaudio.transforms as T
+from torch.utils.data import Dataset, DataLoader, random_split
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import torch.nn.functional as F
+import sklearn.metrics as metrics
+import os
+from sklearn.model_selection import KFold
+from torch.utils.data import DataLoader, random_split, Subset
+from visualizations import *
+from processing import *
+from pathlib import Path
+
+LABELS = {
+    "piano": 0,
+    "drums": 1,
+    "bass": 2,
+    "guitar": 3,
+    "no_music": 4
+}
+
+class InstrumentClassifier(nn.Module):
+    def __init__(self, num_classes=5):
+        super(InstrumentClassifier, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+
+        self.pool = nn.MaxPool2d(2, 2)
+        self.global_pool = nn.AdaptiveAvgPool2d(1)  # Adaptive pooling to 1x1
+
+        self.fc1 = nn.Linear(128, 64)
+        self.dropout = nn.Dropout(0.3)  # 30% dropout
+        self.fc2 = nn.Linear(64, num_classes)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
+
+        x = self.global_pool(x)
+        x = x.view(x.size(0), -1)  # Flatten before FC layers
+
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)  # Apply dropout
+        x = self.fc2(x)
+        return x
+    
+
+class BabySlakhDataset(Dataset):
+    def __init__(self, stem_dict, segment_duration=2.0, sample_rate=22050, n_mels=128, energy_threshold=0.01, num_classes=5):
+        """
+        Args:
+            stem_dict (dict): Dictionary mapping file paths to lists of labels.
+            segment_duration (float): Duration (in seconds) of each segment.
+            sample_rate (int): Audio sample rate.
+            n_mels (int): Number of Mel spectrogram bins.
+            energy_threshold (float): Threshold to determine if audio segment has music.
+            num_classes (int): Total number of instrument classes.
+        """
+        self.sample_rate = sample_rate
+        self.segment_samples = int(segment_duration * sample_rate)
+        self.mel_transform = T.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)
+        self.segments = []
+        self.num_classes = num_classes
+
+        for path, labels in stem_dict.items():
+            waveform, sr = librosa.load(path, sr=self.sample_rate)
+            total_samples = len(waveform)
+
+            for start in range(0, total_samples, self.segment_samples):
+                end = start + self.segment_samples
+                segment = waveform[start:end]
+                if len(segment) < self.segment_samples:
+                    continue  # Skip incomplete segment
+
+                energy = np.mean(np.abs(segment))
+                if energy < energy_threshold:
+                    multi_hot = torch.zeros(num_classes)  # No music → all zeros
+                    multi_hot[LABELS["no_music"]] = 1
+                else:
+                    multi_hot = torch.zeros(num_classes)
+                    for label in labels:  # Set 1s for multiple labels
+                        multi_hot[label] = 1
+
+                self.segments.append((segment, multi_hot))
+
+    def __len__(self):
+        return len(self.segments)
+
+    def __getitem__(self, idx):
+        waveform_segment, multi_hot_label = self.segments[idx]
+        mel_spec = self.mel_transform(torch.tensor(waveform_segment).unsqueeze(0))
+        mel_spec = torch.log1p(mel_spec)  # Convert to log-scale for stability
+        return mel_spec, multi_hot_label  # Multi-hot labels for multi-class classification
+    
+def evaluate(model, dataloader, label="Validation", display_conf_matrix = False):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for mel_spec, labels in dataloader:
+            mel_spec, labels = mel_spec.to(device), labels.to(device)
+
+            outputs = model(mel_spec)
+            predicted = torch.sigmoid(outputs) >= 0.5  # Convert to binary predictions
+
+            all_preds.append(predicted.cpu().numpy())
+            all_labels.append(labels.cpu().numpy())
+
+    # Convert to numpy arrays
+    all_preds = np.vstack(all_preds)
+    all_labels = np.vstack(all_labels)
+
+    # Compute multi-label accuracy
+    accuracy = metrics.accuracy_score(all_labels, all_preds)
+    print(f"{label} Accuracy: {accuracy*100:.2f}%")
+
+    class_names = list(LABELS.keys())
+    if display_conf_matrix:
+      # Plot the confusion matrix
+      plot_confusion_matrix(all_labels, all_preds, class_names, label=label)
+    if label == "Test":
+      plot_f1_score(all_labels, all_preds, class_names)
+      plot_average_precision(all_labels, all_preds, class_names)
+
+    return accuracy, all_preds
+
+
+def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classes=5):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    criterion = nn.BCEWithLogitsLoss()  # Multi-label loss
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    for epoch in range(epochs):
+        model.train()
+        total_loss = 0
+        total_correct = 0
+        total_samples = 0
+        display_cm = False
+
+        for mel_spec, labels in train_loader:
+            mel_spec = mel_spec.to(device)
+            labels = labels.to(device)  # Now labels are multi-hot
+
+            optimizer.zero_grad()
+            outputs = model(mel_spec)  # Get raw logits
+
+            loss = criterion(outputs, labels.float())  # Compute loss
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+            # **Fix accuracy calculation**
+            predicted = torch.sigmoid(outputs)  # Convert logits to probabilities
+            predicted = (predicted >= 0.5).float()  # Thresholding
+
+            correct = (predicted == labels).sum().item()  # Compare entire multi-hot labels
+            total_correct += correct
+            total_samples += labels.numel()  # Total elements (all classes for all samples)
+
+        # Calculate accuracy
+        train_acc = 100 * total_correct / total_samples
+        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {total_loss:.4f} | Train Accuracy: {train_acc:.2f}%")
+        if epoch == epochs-1:
+            display_cm = True
+        if val_loader is not None:
+            val_accuracy, _ = evaluate(model, val_loader, "Validation", display_cm)
+            print(f"Validation Accuracy: {val_accuracy:.2f}%")
+            return val_accuracy
+
+    return None
+
+def cross_validation(train_val_len, train_val_data, k = 5, fold_epochs = 5):
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+
+    fold_metrics = []
+      
+    for fold, (train_idx, val_idx) in enumerate(kf.split(range(train_val_len))):
+        print(f"--- Fold {fold+1} ---")
+
+        # Create train and validation subsets
+        train_subset = Subset(train_val_data, train_idx)
+        val_subset = Subset(train_val_data, val_idx)
+
+        # Data loaders
+        train_loader = DataLoader(train_subset, batch_size=8, shuffle=True)
+        val_loader = DataLoader(val_subset, batch_size=8, shuffle=False)
+
+        # Initialize model
+        model = InstrumentClassifier(num_classes=len(LABELS))
+
+        # Train model
+        fold_accuracy = train_with_val(model, train_loader, val_loader, epochs=fold_epochs)
+
+        # Store fold metrics
+        fold_metrics.append({"fold": fold+1, "accuracy": fold_accuracy})
+        
+        print(f"Fold {fold+1} Validation Accuracy: {fold_accuracy:.4f}")
+        print("\n--- Fold End ---\n")
+
+    # Compute average validation accuracy
+    avg_val_accuracy = sum([m["accuracy"] for m in fold_metrics]) / len(fold_metrics)
+    print(f"\n--- Cross-validation Completed ---")
+    print(f"Average Validation Accuracy: {avg_val_accuracy:.4f}")
+
+def get_model(dataset, cross_validation = False, test_split = 0.2, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15):
+  # Split into train+val (80%) and test (20%)
+  total_len = len(dataset)
+  test_len = int(test_split * total_len)
+  train_val_len = total_len - test_len
+
+  train_val_dataset, test_dataset = random_split(dataset, [train_val_len, test_len])
+
+  if cross_validation:
+    # Cross-validation setup
+    cross_validation(train_val_len, train_val_dataset, k_fold_splits, fold_epochs) 
+    # --- Final Model Training on Full Train+Val Dataset ---
+    print("\n--- Retraining on Full Train+Val Dataset ---")
+  else:
+    print("\n--- Training on Full Train+Val Dataset - NO CROSS VAL ---")
+
+  final_model = InstrumentClassifier(num_classes=len(LABELS))
+  final_train_loader = DataLoader(train_val_dataset, batch_size=8, shuffle=True)
+
+  train_with_val(final_model, final_train_loader, None, epochs=final_epochs)  # Train for longer
+  return final_model, test_dataset
+
+
+if __name__ == "__main__":
+  os.chdir(os.path.dirname(__file__))  # Moves to the script's directory
+  track_name = "Track00001"
+  project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
+  guitar_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S00.wav")
+  drums_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S01.wav")
+  piano_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S02.wav")
+  bass_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S03.wav")
+  combined_path = os.path.join(project_root, "data", "raw", track_name, "stems", "combined.wav")
+
+  stem_dict = {
+      guitar_path: [LABELS["guitar"]],                  # Single label
+      drums_path: [LABELS["drums"]],                   # Single label
+      piano_path: [LABELS["piano"]],                   # Single label
+      bass_path: [LABELS["bass"]],                    # Single label
+      combined_path: [LABELS["piano"], LABELS["bass"]],  # Multi-label: Piano & Bass
+  }
+
+
+  # Load dataset
+  full_dataset = BabySlakhDataset(stem_dict)
+  final_model, test_dataset = get_model(full_dataset, cross_validation=False, test_split = 0.2, k_fold_splits=5, fold_epochs = 5, final_epochs = 15)
+
+  # --- Final Test Evaluation ---
+  print("\n--- Final Test Evaluation ---")
+  test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
+  evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
