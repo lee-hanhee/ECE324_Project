@@ -16,7 +16,8 @@ INSTRUMENT_CLASSES = [
     'strings',
     'strings (continued)',
     'synth lead',
-    'synth pad'
+    'synth pad',
+    'no_music'
 ]
 
 # Mapping from name to index
@@ -65,11 +66,11 @@ def get_data(percent=1.0, seed=42):
         seed (int): Random seed for reproducibility.
     
     Returns:
-        stem_dict (dict): Maps file paths to a list of label indices.
+        data_dict (dict): Maps file paths to a list of label indices.
     """
     random.seed(seed)
     base_dir = "data/instruments"
-    stem_dict = {}
+    data_dict = {}
 
     for folder in os.listdir(base_dir):
         folder_path = os.path.join(base_dir, folder)
@@ -89,13 +90,7 @@ def get_data(percent=1.0, seed=42):
 
         for path in selected:
             label_indices = get_one_hot_label_from_filename(os.path.basename(path))
-            stem_dict[path] = label_indices
+            data_dict[path] = label_indices
 
-    return stem_dict
+    return data_dict, INST_TO_INDEX
 
-# Get 25% of the data from each class
-data = get_data(percent=0.1)
-
-# Print sample
-for path, labels in list(data.items()):
-    print(path, "->", labels)
