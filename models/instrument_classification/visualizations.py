@@ -16,7 +16,7 @@ def plot_confusion_matrix(all_labels, all_preds, class_names, label="Validation"
     """
     conf_matrices = multilabel_confusion_matrix(all_labels, all_preds)
 
-    fig, axes = plt.subplots(1, len(class_names), figsize=(15, 4))
+    fig, axes = plt.subplots(1, len(class_names), figsize=(15, 2))
     fig.suptitle(f"{label} Confusion Matrices", fontsize=16)
 
     for i, class_name in enumerate(class_names):

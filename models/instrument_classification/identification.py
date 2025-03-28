@@ -10,17 +10,9 @@ import sklearn.metrics as metrics
 import os
 from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, random_split, Subset
-from visualizations import *
-from processing import *
+from visualizations import plot_average_precision, plot_confusion_matrix, plot_f1_score
+from processing import get_data, get_one_hot_label_from_filename
 from pathlib import Path
-
-LABELS = {
-    "piano": 0,
-    "drums": 1,
-    "bass": 2,
-    "guitar": 3,
-    "no_music": 4
-}
 
 class InstrumentClassifier(nn.Module):
     def __init__(self, num_classes=5):
@@ -55,7 +47,6 @@ class InstrumentClassifier(nn.Module):
         x = self.fc2(x)
         return x
     
-
 class BabySlakhDataset(Dataset):
     def __init__(self, stem_dict, segment_duration=2.0, sample_rate=22050, n_mels=128, energy_threshold=0.01, num_classes=5):
         """
@@ -139,7 +130,6 @@ def evaluate(model, dataloader, label="Validation", display_conf_matrix = False)
 
     return accuracy, all_preds
 
-
 def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classes=5):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -187,7 +177,7 @@ def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classe
 
     return None
 
-def cross_validation(train_val_len, train_val_data, k = 5, fold_epochs = 5):
+def cross_validation(LABELS, train_val_len, train_val_data, k = 5, fold_epochs = 5):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
     fold_metrics = []
@@ -220,7 +210,7 @@ def cross_validation(train_val_len, train_val_data, k = 5, fold_epochs = 5):
     print(f"\n--- Cross-validation Completed ---")
     print(f"Average Validation Accuracy: {avg_val_accuracy:.4f}")
 
-def get_model(dataset, cross_validation = False, test_split = 0.2, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15):
+def get_model(dataset, LABELS, cross_validation = False, test_split = 0.2, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15):
   # Split into train+val (80%) and test (20%)
   total_len = len(dataset)
   test_len = int(test_split * total_len)
@@ -230,7 +220,7 @@ def get_model(dataset, cross_validation = False, test_split = 0.2, k_fold_splits
 
   if cross_validation:
     # Cross-validation setup
-    cross_validation(train_val_len, train_val_dataset, k_fold_splits, fold_epochs) 
+    cross_validation(LABELS, train_val_len, train_val_dataset, k_fold_splits, fold_epochs) 
     # --- Final Model Training on Full Train+Val Dataset ---
     print("\n--- Retraining on Full Train+Val Dataset ---")
   else:
@@ -242,31 +232,55 @@ def get_model(dataset, cross_validation = False, test_split = 0.2, k_fold_splits
   train_with_val(final_model, final_train_loader, None, epochs=final_epochs)  # Train for longer
   return final_model, test_dataset
 
+def run_model(model, data_dict):
+  dataset = BabySlakhDataset(data_dict)
+  dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
+
+  accuracy, predictions = evaluate(model, dataloader, label="Predict", display_conf_matrix=True)
+  class_counts = np.sum(predictions, axis=0)
+      
+  # Classify a label as True if it appears more than the threshold
+  song_label = (class_counts > 10).astype(int)
+
+  pred_labels = []
+  for label, num in LABELS.items():
+    if song_label[num] == 1:
+      pred_labels.append(label)
+
+  return accuracy, pred_labels
 
 if __name__ == "__main__":
-  os.chdir(os.path.dirname(__file__))  # Moves to the script's directory
-  track_name = "Track00001"
-  project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
-  guitar_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S00.wav")
-  drums_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S01.wav")
-  piano_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S02.wav")
-  bass_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S03.wav")
-  combined_path = os.path.join(project_root, "data", "raw", track_name, "stems", "combined.wav")
 
-  stem_dict = {
-      guitar_path: [LABELS["guitar"]],                  # Single label
-      drums_path: [LABELS["drums"]],                   # Single label
-      piano_path: [LABELS["piano"]],                   # Single label
-      bass_path: [LABELS["bass"]],                    # Single label
-      combined_path: [LABELS["piano"], LABELS["bass"]],  # Multi-label: Piano & Bass
-  }
+  inst_dict, LABELS = get_data(percent=0.05, seed=42)
+
+  # os.chdir(os.path.dirname(__file__))  # Moves to the script's directory
+  # track_name = "Track00001"
+  # project_root = os.path.abspath(os.path.join(os.getcwd(), "..", ".."))
+  # guitar_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S00.wav")
+  # drums_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S01.wav")
+  # piano_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S02.wav")
+  # bass_path = os.path.join(project_root, "data", "raw", track_name, "stems", "S03.wav")
+  # combined_path = os.path.join(project_root, "data", "raw", track_name, "stems", "combined.wav")
+
+  # stem_dict = {
+  #     guitar_path: [LABELS["guitar"]],                  # Single label
+  #     drums_path: [LABELS["drums"]],                   # Single label
+  #     piano_path: [LABELS["piano"]],                   # Single label
+  #     bass_path: [LABELS["bass"]],                    # Single label
+  #     combined_path: [LABELS["piano"], LABELS["bass"]],  # Multi-label: Piano & Bass
+  # }
 
 
   # Load dataset
-  full_dataset = BabySlakhDataset(stem_dict)
-  final_model, test_dataset = get_model(full_dataset, cross_validation=False, test_split = 0.2, k_fold_splits=5, fold_epochs = 5, final_epochs = 15)
+  full_dataset = BabySlakhDataset(inst_dict, num_classes = len(LABELS.keys()))
+  final_model, test_dataset = get_model(full_dataset, LABELS, cross_validation=False, test_split = 0.2, k_fold_splits=5, fold_epochs = 5, final_epochs = 15)
 
   # --- Final Test Evaluation ---
   print("\n--- Final Test Evaluation ---")
   test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
   evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
+
+  # new_dict, _ = get_data(percent=0.01, seed=1) 
+  # accuracy, prediction = run_model(final_model, new_dict)
+  # print("New Prediction Accuracy: ", accuracy)
+  # print("Prediction: ", prediction)
