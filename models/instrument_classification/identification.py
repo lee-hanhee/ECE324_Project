@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from visualizations import plot_average_precision, plot_confusion_matrix, plot_f1_score
 from processing import get_data, get_one_hot_label_from_filename
 from pathlib import Path
+from tqdm import tqdm
 
 class InstrumentClassifier(nn.Module):
     def __init__(self, num_classes=5):
@@ -103,7 +104,7 @@ def evaluate(model, dataloader, label="Validation", display_conf_matrix = False)
     all_labels = []
 
     with torch.no_grad():
-        for mel_spec, labels in dataloader:
+        for mel_spec, labels in tqdm(dataloader, desc=f"Evaluating {label}", leave=False):
             mel_spec, labels = mel_spec.to(device), labels.to(device)
 
             outputs = model(mel_spec)
@@ -144,7 +145,7 @@ def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classe
         total_samples = 0
         display_cm = False
 
-        for mel_spec, labels in train_loader:
+        for mel_spec, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
             mel_spec = mel_spec.to(device)
             labels = labels.to(device)  # Now labels are multi-hot
 
@@ -251,7 +252,7 @@ def run_model(model, data_dict):
 
 if __name__ == "__main__":
 
-  inst_dict, LABELS = get_data(percent=0.05, seed=42)
+  inst_dict, LABELS = get_data(percent=0.4, seed=42)
 
   # os.chdir(os.path.dirname(__file__))  # Moves to the script's directory
   # track_name = "Track00001"
