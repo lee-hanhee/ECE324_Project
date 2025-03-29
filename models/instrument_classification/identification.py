@@ -257,7 +257,7 @@ def load_and_run_model(path_of_model, data_dict, LABELS):
     return accuracy, pred_labels
 
 if __name__ == "__main__":
-    model_path = "saved_model.pth"
+    model_path = "models/instrument_classification/saved_model.pth"
     save_model = True
     train_model = False
 
