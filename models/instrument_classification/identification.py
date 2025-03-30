@@ -278,5 +278,5 @@ if __name__ == "__main__":
         test_loader = DataLoader(test_data, batch_size=8, shuffle=False)
         evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
     else:
-        new_dict, LABELS = get_data(percent=0.01, seed=1) 
-        accuracy, prediction = load_and_run_model(model_path, new_dict, LABELS)
+        new_dict, LABELS = get_data(percent=0.02, seed=1) 
+        _, _ = load_and_run_model(model_path, new_dict, LABELS)
