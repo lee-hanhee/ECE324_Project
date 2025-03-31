@@ -15,9 +15,6 @@ Requirements:
 
 Installation:
 pip install tensorflow tensorflow-hub librosa scikit-learn numpy pandas matplotlib tqdm
-
-Note: You may need to install additional dependencies for audio processing:
-pip install soundfile audioread
 """
 
 import os
@@ -39,8 +36,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 import warnings
 
-# Suppress warnings
-warnings.filterwarnings('ignore')
 
 def load_dataset(data_path, test_size=0.2, random_state=42, save_path=None):
     """
