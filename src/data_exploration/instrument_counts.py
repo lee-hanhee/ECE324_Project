@@ -28,6 +28,9 @@ def extract_instrument_data(base_path):
         # Extract instruments from the stems section
         stems = metadata.get("stems", {})
         inst_classes = [stem_data["inst_class"] for stem_data in stems.values() if "inst_class" in stem_data]
+        if "Sound effects" in inst_classes:
+            inst_classes.remove("Sound effects")
+            inst_classes.append("Sound Effects")
 
         # Count the number of instruments and their distribution
         track_key = f"Track{str(i).zfill(5)}"
@@ -42,9 +45,12 @@ def plot_combined_instrument_distribution(instrument_distributions):
     for dist in instrument_distributions.values():
         total_counts.update(dist)
 
+    # Sort the total counts by value (highest to lowest)
+    sorted_counts = dict(total_counts.most_common())
+
     # Plot single combined bar graph
     plt.figure(figsize=(12, 6))
-    plt.bar(total_counts.keys(), total_counts.values())
+    plt.bar(sorted_counts.keys(), sorted_counts.values())
     plt.title("Overall Instrument Class Distribution Across All Tracks")
     plt.xlabel("Instrument Classes")
     plt.ylabel("Total Count")
