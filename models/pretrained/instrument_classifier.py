@@ -117,7 +117,7 @@ def extract_yamnet_embedding(audio_file, model):
         audio, sr = librosa.load(audio_file, sr=16000, mono=True)
         
         # Process with YAMNet
-        scores, embeddings, log_mel_spectrogram = model(audio)
+        scores, embeddings, log_mel_spectrogram = model(audio) # embedding is 1024 based on the model, which can be used to train a classifier
         
         # Average pooling over time
         embedding = tf.reduce_mean(embeddings, axis=0).numpy()
