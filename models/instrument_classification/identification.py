@@ -16,12 +16,12 @@ from pathlib import Path
 from tqdm import tqdm
 
 class InstrumentClassifier(nn.Module):
-    def __init__(self, num_classes=5):
+    def __init__(self, num_classes=14, padding = 1, dropout=0.3, kernel_size=3):
         super(InstrumentClassifier, self).__init__()
 
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
-
+  
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
 
@@ -32,7 +32,7 @@ class InstrumentClassifier(nn.Module):
         self.global_pool = nn.AdaptiveAvgPool2d(1)  # Adaptive pooling to 1x1
 
         self.fc1 = nn.Linear(128, 64)
-        self.dropout = nn.Dropout(0.3)  # 30% dropout
+        self.dropout = nn.Dropout(dropout)  # 30% dropout
         self.fc2 = nn.Linear(64, num_classes)
 
     def forward(self, x):
@@ -220,7 +220,9 @@ def get_train_test_split(dataset, test_split = 0.2):
     train_val_dataset, test_dataset = random_split(dataset, [train_val_len, test_len])
     return train_val_dataset, train_val_len, test_dataset
 
-def get_model(train_val_data, train_val_length, LABELS, cross_validation = False, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15):
+def get_model(train_val_data, train_val_length, LABELS, cross_validation = False, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15, padding=1, 
+                                dropout = 0.3, 
+                                kernel_size = 3):
     if cross_validation:
         # Cross-validation setup
         run_cross_validation(LABELS, train_val_length, train_val_data, k_fold_splits, fold_epochs) 
@@ -259,14 +261,37 @@ def load_and_run_model(path_of_model, data_dict, LABELS):
 if __name__ == "__main__":
     model_path = "models/instrument_classification/saved_model.pth"
     save_model = True
-    train_model = False
+    train_model = True
+    hyperparameters = {
+        "epochs": 10,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "num_classes": 14,
+        "padding": 1,
+        "dropout": 0.2,
+        "segment_duration": 2.0,
+        "sample_rate": 22050,
+        "n_mels": 128,
+        "energy_threshold": 0.01, 
+        "kernel_size": 1
+    }
 
     if train_model:
-        inst_dict, LABELS = get_data(percent=0.4, seed=42)
+        inst_dict, LABELS = get_data(percent=0.05, seed=42)
+        hyperparameters["num_classes"] = len(LABELS)
         # Load dataset
-        full_dataset = BabySlakhDataset(inst_dict, num_classes = len(LABELS.keys()))
+        full_dataset = BabySlakhDataset(inst_dict, 
+                                        num_classes = hyperparameters["num_classes"]) 
+                                        
         train_data, train_len, test_data = get_train_test_split(full_dataset, test_split = 0.3)
-        final_model = get_model(train_data, train_len, LABELS, cross_validation=False, k_fold_splits=5, fold_epochs = 5, final_epochs = 15)
+        final_model = get_model(train_data, train_len, LABELS, 
+                                cross_validation=False, 
+                                k_fold_splits=5, 
+                                fold_epochs = 5, 
+                                final_epochs = 10, 
+                                padding=hyperparameters["padding"], 
+                                dropout = hyperparameters["dropout"], 
+                                kernel_size = hyperparameters["kernel_size"])
 
         # save model
         if save_model:
