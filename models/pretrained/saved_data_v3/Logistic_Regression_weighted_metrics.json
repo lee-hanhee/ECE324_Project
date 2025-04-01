@@ -1,0 +1,6 @@
+{
+    "weighted_precision": 0.7757936507936507,
+    "weighted_recall": 0.7380952380952381,
+    "weighted_f1": 0.7316459917300253,
+    "total_support": 42
+}

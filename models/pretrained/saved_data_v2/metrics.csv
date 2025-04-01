@@ -1,0 +1,25 @@
+Model,Class,Precision,Recall,F1_Score,Support
+Logistic Regression,Bass,1.0,1.0,1.0,4
+Logistic Regression,Brass,0.0,0.0,0.0,2
+Logistic Regression,Chromatic Percussion,0.6666666666666666,1.0,0.8,2
+Logistic Regression,Drums,1.0,0.5,0.6666666666666666,4
+Logistic Regression,Guitar,0.75,0.6666666666666666,0.7058823529411765,9
+Logistic Regression,Organ,0.3333333333333333,0.5,0.4,2
+Logistic Regression,Piano,0.75,1.0,0.8571428571428571,6
+Logistic Regression,Pipe,1.0,0.5,0.6666666666666666,2
+Logistic Regression,Reed,0.0,0.0,0.0,1
+Logistic Regression,Strings,1.0,1.0,1.0,7
+Logistic Regression,Synth Lead,0.3333333333333333,1.0,0.5,1
+Logistic Regression,Synth Pad,1.0,0.5,0.6666666666666666,2
+MLP,Bass,1.0,1.0,1.0,4
+MLP,Brass,0.0,0.0,0.0,2
+MLP,Chromatic Percussion,0.0,0.0,0.0,2
+MLP,Drums,0.5,0.5,0.5,4
+MLP,Guitar,0.4444444444444444,0.4444444444444444,0.4444444444444444,9
+MLP,Organ,0.0,0.0,0.0,2
+MLP,Piano,0.36363636363636365,0.6666666666666666,0.4705882352941177,6
+MLP,Pipe,0.0,0.0,0.0,2
+MLP,Reed,0.0,0.0,0.0,1
+MLP,Strings,0.2857142857142857,0.2857142857142857,0.2857142857142857,7
+MLP,Synth Lead,0.0,0.0,0.0,1
+MLP,Synth Pad,0.0,0.0,0.0,2
