@@ -25,7 +25,7 @@ This project provides a robust framework for automatic instrument classification
 - FFmpeg (audio processing)
 - YAMNet (pretrained audio classification model)
 
-## �� Code Structure
+## Code Structure
 
 ```
 ├── data/                         # Source audio files with instrument labels
