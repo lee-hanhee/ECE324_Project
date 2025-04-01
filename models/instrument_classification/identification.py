@@ -268,12 +268,12 @@ if __name__ == "__main__":
         "learning_rate": 0.001,
         "num_classes": 14,
         "padding": 1,
-        "dropout": 0.2,
+        "dropout": 0.3,
+        "kernel_size": 3,
         "segment_duration": 2.0,
         "sample_rate": 22050,
         "n_mels": 128,
-        "energy_threshold": 0.01, 
-        "kernel_size": 1
+        "energy_threshold": 0.01
     }
 
     if train_model:
