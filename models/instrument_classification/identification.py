@@ -10,18 +10,26 @@ import sklearn.metrics as metrics
 import os
 from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, random_split, Subset
-from visualizations import plot_metrics, plot_confusion_matrix, plot_confusion_bar, show_saliency
+from visualizations import (
+    plot_metrics,
+    plot_confusion_matrix,
+    plot_confusion_bar,
+    show_saliency,
+)
 from processing import get_data
 from pathlib import Path
 from tqdm import tqdm
+from jaxtyping import Float
+from torch import Tensor
+
 
 class InstrumentClassifier(nn.Module):
-    def __init__(self, num_classes=14, padding = 1, dropout=0.3, kernel_size=3):
+    def __init__(self, num_classes=14, padding=1, dropout=0.3, kernel_size=3):
         super(InstrumentClassifier, self).__init__()
 
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
-  
+
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
 
@@ -35,7 +43,9 @@ class InstrumentClassifier(nn.Module):
         self.dropout = nn.Dropout(dropout)  # 30% dropout
         self.fc2 = nn.Linear(64, num_classes)
 
-    def forward(self, x):
+    def forward(
+        self, x: Float[Tensor, "batch 1 mel time"]
+    ) -> Float[Tensor, "batch num_classes"]:
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
         x = self.pool(F.relu(self.bn2(self.conv2(x))))
         x = self.pool(F.relu(self.bn3(self.conv3(x))))
@@ -47,11 +57,20 @@ class InstrumentClassifier(nn.Module):
         x = self.dropout(x)  # Apply dropout
         x = self.fc2(x)
         return x
-    
+
+
 class BabySlakhDataset(Dataset):
-    def __init__(self, stem_dict, segment_duration=2.0, sample_rate=22050, n_mels=128, energy_threshold=0.01, num_classes=5):
+    def __init__(
+        self,
+        stem_dict,
+        segment_duration=2.0,
+        sample_rate=22050,
+        n_mels=128,
+        energy_threshold=0.01,
+        num_classes=5,
+    ):
         """
-        Args:
+        Parameters:
             stem_dict (dict): Dictionary mapping file paths to lists of labels.
             segment_duration (float): Duration (in seconds) of each segment.
             sample_rate (int): Audio sample rate.
@@ -89,13 +108,35 @@ class BabySlakhDataset(Dataset):
     def __len__(self):
         return len(self.segments)
 
-    def __getitem__(self, idx):
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[Float[Tensor, "1 mel time"], Float[Tensor, "num_classes"]]:
         waveform_segment, multi_hot_label = self.segments[idx]
         mel_spec = self.mel_transform(torch.tensor(waveform_segment).unsqueeze(0))
         mel_spec = torch.log1p(mel_spec)  # Convert to log-scale for stability
-        return mel_spec, multi_hot_label  # Multi-hot labels for multi-class classification
-    
-def evaluate(model, dataloader, label="Validation", display_conf_matrix = False):
+        return (
+            mel_spec,
+            multi_hot_label,
+        )  # Multi-hot labels for multi-class classification
+
+
+def evaluate(
+    model: nn.Module,
+    dataloader: DataLoader,
+    label: str = "Validation",
+    display_conf_matrix: bool = False,
+) -> tuple[float, np.ndarray]:
+    """
+    Evaluate the model on the given dataset.
+    Parameters:
+        model: Trained model.
+        dataloader: DataLoader for the dataset.
+        label: Label for the dataset (e.g., "Validation", "Test").
+        display_conf_matrix: Boolean indicating whether to display confusion matrix.
+    Returns:
+        accuracy: Accuracy of the model on the dataset.
+        all_preds: All predictions made by the model.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
@@ -104,7 +145,9 @@ def evaluate(model, dataloader, label="Validation", display_conf_matrix = False)
     all_labels = []
 
     with torch.no_grad():
-        for mel_spec, labels in tqdm(dataloader, desc=f"Evaluating {label}", leave=False):
+        for mel_spec, labels in tqdm(
+            dataloader, desc=f"Evaluating {label}", leave=False
+        ):
             mel_spec, labels = mel_spec.to(device), labels.to(device)
 
             outputs = model(mel_spec)
@@ -123,15 +166,35 @@ def evaluate(model, dataloader, label="Validation", display_conf_matrix = False)
 
     class_names = list(LABELS.keys())
     if display_conf_matrix:
-      # Plot the confusion matrix
-      plot_confusion_matrix(all_labels, all_preds, class_names, label=label)
-      plot_confusion_bar(all_labels, all_preds, class_names, label=label)
+        # Plot the confusion matrix
+        plot_confusion_matrix(all_labels, all_preds, class_names, label=label)
+        plot_confusion_bar(all_labels, all_preds, class_names, label=label)
     if label != "Validation":
-      plot_metrics(all_labels, all_preds, class_names)
+        plot_metrics(all_labels, all_preds, class_names)
 
     return accuracy, all_preds
 
-def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classes=5):
+
+def train_with_val(
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader | None,
+    epochs: int,
+    lr: float = 0.001,
+    num_classes: int = 5,
+) -> float | None:
+    """
+    Train the model with validation.
+    Parameters:
+        model: Model to be trained.
+        train_loader: DataLoader for training data.
+        val_loader: DataLoader for validation data.
+        epochs: Number of epochs to train.
+        lr: Learning rate for the optimizer.
+        num_classes: Number of classes for multi-label classification.
+    Returns:
+        None
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -145,7 +208,9 @@ def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classe
         total_samples = 0
         display_cm = False
 
-        for mel_spec, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
+        for mel_spec, labels in tqdm(
+            train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
+        ):
             mel_spec = mel_spec.to(device)
             labels = labels.to(device)  # Now labels are multi-hot
 
@@ -162,14 +227,20 @@ def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classe
             predicted = torch.sigmoid(outputs)  # Convert logits to probabilities
             predicted = (predicted >= 0.5).float()  # Thresholding
 
-            correct = (predicted == labels).sum().item()  # Compare entire multi-hot labels
+            correct = (
+                (predicted == labels).sum().item()
+            )  # Compare entire multi-hot labels
             total_correct += correct
-            total_samples += labels.numel()  # Total elements (all classes for all samples)
+            total_samples += (
+                labels.numel()
+            )  # Total elements (all classes for all samples)
 
         # Calculate accuracy
         train_acc = 100 * total_correct / total_samples
-        print(f"Epoch {epoch+1}/{epochs} | Train Loss: {total_loss:.4f} | Train Accuracy: {train_acc:.2f}%")
-        if epoch == epochs-1:
+        print(
+            f"Epoch {epoch+1}/{epochs} | Train Loss: {total_loss:.4f} | Train Accuracy: {train_acc:.2f}%"
+        )
+        if epoch == epochs - 1:
             display_cm = True
         if val_loader is not None:
             val_accuracy, _ = evaluate(model, val_loader, "Validation", display_cm)
@@ -178,11 +249,22 @@ def train_with_val(model, train_loader, val_loader, epochs, lr=0.001, num_classe
 
     return None
 
-def run_cross_validation(LABELS, train_val_len, train_val_data, k = 5, fold_epochs = 5):
+
+def run_cross_validation(LABELS, train_val_len, train_val_data, k=5, fold_epochs=5):
+    """
+    Run k-fold cross-validation on the dataset.
+    Parameters:
+        LABELS: Dictionary mapping labels to indices.
+        train_val_len: Length of the training+validation dataset.
+        train_val_data: Dataset for training and validation.
+        k: Number of folds for cross-validation.
+        fold_epochs: Number of epochs for each fold.
+    Returns:
+        None"""
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
     fold_metrics = []
-      
+
     for fold, (train_idx, val_idx) in enumerate(kf.split(range(train_val_len))):
         print(f"--- Fold {fold+1} ---")
 
@@ -198,11 +280,13 @@ def run_cross_validation(LABELS, train_val_len, train_val_data, k = 5, fold_epoc
         model = InstrumentClassifier(num_classes=len(LABELS))
 
         # Train model
-        fold_accuracy = train_with_val(model, train_loader, val_loader, epochs=fold_epochs)
+        fold_accuracy = train_with_val(
+            model, train_loader, val_loader, epochs=fold_epochs
+        )
 
         # Store fold metrics
-        fold_metrics.append({"fold": fold+1, "accuracy": fold_accuracy})
-        
+        fold_metrics.append({"fold": fold + 1, "accuracy": fold_accuracy})
+
         print(f"Fold {fold+1} Validation Accuracy: {fold_accuracy:.4f}")
         print("\n--- Fold End ---\n")
 
@@ -211,7 +295,19 @@ def run_cross_validation(LABELS, train_val_len, train_val_data, k = 5, fold_epoc
     print(f"\n--- Cross-validation Completed ---")
     print(f"Average Validation Accuracy: {avg_val_accuracy:.4f}")
 
-def get_train_test_split(dataset, test_split = 0.2):
+
+def get_train_test_split(
+    dataset: Dataset, test_split: float = 0.2
+) -> tuple[Dataset, int, Dataset]:
+
+    """
+    Split the dataset into training+validation and test sets.
+    Parameters:
+        dataset: Dataset to be split.
+        test_split: Proportion of the dataset to include in the test split.
+    Returns:
+        train_val_dataset: Training+validation dataset.
+        train_val_len: Length of the training+validation dataset."""
     # Split into train+val (80%) and test (20%)
     total_len = len(dataset)
     test_len = int(test_split * total_len)
@@ -220,12 +316,40 @@ def get_train_test_split(dataset, test_split = 0.2):
     train_val_dataset, test_dataset = random_split(dataset, [train_val_len, test_len])
     return train_val_dataset, train_val_len, test_dataset
 
-def get_model(train_val_data, train_val_length, LABELS, cross_validation = False, k_fold_splits = 5, fold_epochs = 5, final_epochs = 15, padding=1, 
-                                dropout = 0.3, 
-                                kernel_size = 3):
+
+def get_model(
+    train_val_data: Dataset,
+    train_val_length: int,
+    LABELS: dict[str, int],
+    cross_validation: bool = False,
+    k_fold_splits: int = 5,
+    fold_epochs: int = 5,
+    final_epochs: int = 15,
+    padding: int = 1,
+    dropout: float = 0.3,
+    kernel_size: int = 3,
+) -> nn.Module:
+    """
+    Get the model and train it on the dataset.
+    Parameters:
+        train_val_data: Dataset for training and validation.
+        train_val_length: Length of the training and validation dataset.
+        LABELS: Dictionary mapping labels to indices.
+        cross_validation: Boolean indicating whether to perform cross-validation.
+        k_fold_splits: Number of splits for cross-validation.
+        fold_epochs: Number of epochs for each fold in cross-validation.
+        final_epochs: Number of epochs for final training.
+        padding: Padding for convolutional layers.
+        dropout: Dropout rate for the model.
+        kernel_size: Kernel size for convolutional layers.
+    Returns:
+        final_model: Trained model.
+    """
     if cross_validation:
         # Cross-validation setup
-        run_cross_validation(LABELS, train_val_length, train_val_data, k_fold_splits, fold_epochs) 
+        run_cross_validation(
+            LABELS, train_val_length, train_val_data, k_fold_splits, fold_epochs
+        )
         # --- Final Model Training on Full Train+Val Dataset ---
         print("\n--- Retraining on Full Train+Val Dataset ---")
     else:
@@ -234,11 +358,29 @@ def get_model(train_val_data, train_val_length, LABELS, cross_validation = False
     final_model = InstrumentClassifier(num_classes=len(LABELS))
     final_train_loader = DataLoader(train_val_data, batch_size=8, shuffle=True)
 
-    train_with_val(final_model, final_train_loader, None, epochs=final_epochs)  # Train for longer
-    
+    train_with_val(
+        final_model, final_train_loader, None, epochs=final_epochs
+    )  # Train for longer
+
     return final_model
 
-def generate_saliency_map(model, mel_spec, class_index, device=None):
+
+def generate_saliency_map(
+    model: nn.Module,
+    mel_spec: Float[Tensor, "1 mel time"],
+    class_index: int,
+    device: torch.device | None = None,
+) -> np.ndarray:
+    """
+    Generate saliency map for a specific class using gradients.
+    Parameters:
+        model: Trained model.
+        mel_spec: Mel spectrogram tensor.
+        class_index: Index of the class to visualize.
+        device: Device to run the model on (CPU or GPU).
+    Returns:
+        saliency: Saliency map as a numpy array.
+    """
     model.eval()
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -251,10 +393,30 @@ def generate_saliency_map(model, mel_spec, class_index, device=None):
     score = output[:, class_index].sum()  # Focus on one class score
 
     score.backward()
-    saliency = mel_spec.grad.data.abs().squeeze().cpu().numpy()  # Get gradient magnitude
+    saliency = (
+        mel_spec.grad.data.abs().squeeze().cpu().numpy()
+    )  # Get gradient magnitude
     return saliency
 
-def interpret_full_audio(model, audio_path, LABELS, sample_rate=22050, n_mels=128):
+
+def interpret_full_audio(
+    model: nn.Module,
+    audio_path: str,
+    LABELS: dict[str, int],
+    sample_rate: int = 22050,
+    n_mels: int = 128,
+) -> None:
+    """
+    Interpret the full audio file and visualize saliency maps for relevant classes.
+    Parameters:
+        model: Trained model.
+        audio_path: Path to the audio file.
+        LABELS: Dictionary mapping labels to indices.
+        sample_rate: Sample rate for audio processing.
+        n_mels: Number of Mel spectrogram bins.
+    Returns:
+        None
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
@@ -280,19 +442,40 @@ def interpret_full_audio(model, audio_path, LABELS, sample_rate=22050, n_mels=12
         if class_name == "no_music":
             continue
         if prob >= 0.5:
-            saliency = generate_saliency_map(model, mel_spec.clone(), idx, device=device)
+            saliency = generate_saliency_map(
+                model, mel_spec.clone(), idx, device=device
+            )
             show_saliency(mel_spec, saliency, class_name=class_name)
 
-def load_and_run_model(path_of_model, data_dict, LABELS, interpret = True):
+
+def load_and_run_model(
+    path_of_model: str,
+    data_dict: dict[str, list[int]],
+    LABELS: dict[str, int],
+    interpret: bool = True,
+) -> tuple[float, list[str]]:
+    """
+    Load the model and run it on the provided dataset.
+    Parameters:
+        path_of_model: Path to the saved model.
+        data_dict: Dictionary containing audio file paths and their corresponding labels.
+        LABELS: Dictionary mapping labels to indices.
+        interpret: Boolean indicating whether to interpret the audio files.
+    Returns:
+        accuracy: Accuracy of the model on the dataset.
+        pred_labels: List of predicted labels for the audio files.
+    """
     dataset = BabySlakhDataset(data_dict, num_classes=len(LABELS))
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
     model = InstrumentClassifier(num_classes=len(LABELS))
     model.load_state_dict(torch.load(path_of_model))
 
-    accuracy, predictions = evaluate(model, dataloader, label="Predict", display_conf_matrix=False)
+    accuracy, predictions = evaluate(
+        model, dataloader, label="Predict", display_conf_matrix=False
+    )
     class_counts = np.sum(predictions, axis=0)
-        
+
     # Classify a label as True if it appears more than the threshold
     song_label = (class_counts > 10).astype(int)
 
@@ -307,6 +490,7 @@ def load_and_run_model(path_of_model, data_dict, LABELS, interpret = True):
             interpret_full_audio(model, audio_path, LABELS)
 
     return accuracy, pred_labels
+
 
 if __name__ == "__main__":
     model_path = "models/instrument_classification/saved_model.pth"
@@ -323,25 +507,32 @@ if __name__ == "__main__":
         "segment_duration": 2.0,
         "sample_rate": 22050,
         "n_mels": 128,
-        "energy_threshold": 0.01
+        "energy_threshold": 0.01,
     }
 
     if train_model:
         inst_dict, LABELS = get_data(percent=0.05, seed=42)
         hyperparameters["num_classes"] = len(LABELS)
         # Load dataset
-        full_dataset = BabySlakhDataset(inst_dict, 
-                                        num_classes = hyperparameters["num_classes"]) 
-                                        
-        train_data, train_len, test_data = get_train_test_split(full_dataset, test_split = 0.3)
-        final_model = get_model(train_data, train_len, LABELS, 
-                                cross_validation=False, 
-                                k_fold_splits=5, 
-                                fold_epochs = 5, 
-                                final_epochs = 10, 
-                                padding=hyperparameters["padding"], 
-                                dropout = hyperparameters["dropout"], 
-                                kernel_size = hyperparameters["kernel_size"])
+        full_dataset = BabySlakhDataset(
+            inst_dict, num_classes=hyperparameters["num_classes"]
+        )
+
+        train_data, train_len, test_data = get_train_test_split(
+            full_dataset, test_split=0.3
+        )
+        final_model = get_model(
+            train_data,
+            train_len,
+            LABELS,
+            cross_validation=False,
+            k_fold_splits=5,
+            fold_epochs=5,
+            final_epochs=10,
+            padding=hyperparameters["padding"],
+            dropout=hyperparameters["dropout"],
+            kernel_size=hyperparameters["kernel_size"],
+        )
 
         # save model
         if save_model:
@@ -353,6 +544,8 @@ if __name__ == "__main__":
         test_loader = DataLoader(test_data, batch_size=8, shuffle=False)
         evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
     else:
-        new_dict, LABELS = get_data(percent=0.02, seed=1) 
-        _, _ = load_and_run_model(model_path, new_dict, LABELS, interpret=True)
-
+        new_dict, LABELS = get_data(percent=0.02, seed=1)
+        _, _ = load_and_run_model(
+            model_path, new_dict, LABELS, interpret=False
+        )
+        print(f"Model loaded from {model_path}")
