@@ -1,12 +1,16 @@
 import os
 import csv
 
+
 def save_dict_of_lists_to_csv(data, output_path):
     """
     Merges new data with existing CSV columns (side-by-side) instead of appending rows.
 
-    :param data: Dictionary {ColumnTitle: listOfData, ColumnTitle2: listOfData2, ...}
-    :param output_path: File path where the CSV should be saved.
+    Parameters:
+        data (dict): Dictionary where keys are column names and values are lists of data.
+        output_path (str): Path to the output CSV file.
+    Returns:
+        None
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -25,7 +29,10 @@ def save_dict_of_lists_to_csv(data, output_path):
     # Step 2: Merge existing columns with new data
     all_headers = set(existing_data.keys()).union(data.keys())
 
-    merged_data = {header: existing_data.get(header, []) + data.get(header, []) for header in all_headers}
+    merged_data = {
+        header: existing_data.get(header, []) + data.get(header, [])
+        for header in all_headers
+    }
 
     # Step 3: Normalize column lengths
     # max_length = max(len(lst) for lst in merged_data.values())
@@ -39,6 +46,7 @@ def save_dict_of_lists_to_csv(data, output_path):
         writer.writerows(zip(*merged_data.values()))  # Row-wise writing
 
     print(f"Data saved to {output_path}")
+
 
 def save_to_summary(data):
     output_file = os.path.join("results/metrics", "data_summary.csv")

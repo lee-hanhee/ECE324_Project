@@ -8,6 +8,14 @@ from collections import Counter
 base_path = "data/raw"
 
 def extract_instrument_data(base_path):
+    '''Extracts instrument data from metadata files in the specified directory.
+    Parameters:
+        base_path (str): The path to the directory containing the track folders.
+    Returns:
+        tuple: A tuple containing two dictionaries:
+            - instrument_distributions: A dictionary with instrument distributions for each track.
+            - instrument_counts: A dictionary with the count of instruments for each track.
+    '''
     # Dictionary to store instrument distributions for each track
     instrument_distributions = {}
     instrument_counts = {}

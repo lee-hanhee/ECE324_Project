@@ -8,17 +8,30 @@ import matplotlib.pyplot as plt
 import csv
 import os
 from figures import save_to_summary
+from jaxtyping import Float, Array
 
 
-def get_frequency_range(y, sr):
-    """Estimate the minimum and maximum frequency range in the audio signal."""
+def get_frequency_range(y: Float[Array, "samples"], sr: int) -> tuple[float, float]:
+    """
+    Calculate the minimum and maximum frequency of an audio signal.
+
+    Parameters:
+        y (ndarray): Audio time series data.
+        sr (int): Sample rate of the audio signal.
+
+    Returns:
+        min_freq (float): Minimum frequency in Hz.
+        max_freq (float): Maximum frequency in Hz.
+    """
     D = np.abs(librosa.stft(y))  # Compute Short-Time Fourier Transform (STFT)
     frequencies = librosa.fft_frequencies(sr=sr)
-    
+
     # Compute the magnitude spectrum
     avg_spectrum = np.mean(D, axis=1)  # Average across time frames
-    threshold = np.max(avg_spectrum) * 0.01  # Consider significant frequencies above 1% of max energy
-    
+    threshold = (
+        np.max(avg_spectrum) * 0.01
+    )  # Consider significant frequencies above 1% of max energy
+
     # Find frequency range
     valid_freqs = frequencies[avg_spectrum > threshold]
     if len(valid_freqs) > 0:
@@ -29,34 +42,66 @@ def get_frequency_range(y, sr):
 
     return min_freq, max_freq
 
-def get_audio_duration(file_path):
-    """Get duration of an audio file in seconds."""
+
+def get_audio_duration(file_path: Path) -> float:
+    """
+    Get duration of an audio file in seconds.
+    Parameters:
+        file_path (Path): Path to the audio file.
+    Returns:
+        float: Duration in seconds.
+    """
     with sf.SoundFile(file_path) as f:
-        return len(f) / f.samplerate  # Total samples / sample rate
-    
+        return len(f) / f.samplerate
+
+
 # Function to plot durations
 def plot_durations(df_durations):
+    """
+    Plot the durations of audio tracks.
+    Parameters:
+        df_durations (DataFrame): DataFrame containing track names and their durations.
+    Returns:
+        None
+    """
     plt.figure(figsize=(12, 6))
-    plt.bar(df_durations["Track"], df_durations["Duration (s)"], color='b', alpha=0.7)
+    plt.bar(df_durations["Track"], df_durations["Duration (s)"], color="b", alpha=0.7)
     plt.xticks(rotation=45, ha="right")
     plt.xlabel("Track")
     plt.ylabel("Duration (seconds)")
     plt.title("Audio Track Durations")
     plt.show()
 
-# Function to plot frequency ranges
+
 def plot_frequencies(df_frequencies):
+    """
+    Plot the frequency ranges of audio tracks.
+    Parameters:
+        df_frequencies (DataFrame): DataFrame containing track names and their frequency ranges.
+    Returns:
+        None
+    """
+
     plt.figure(figsize=(12, 6))
     for i in range(len(df_frequencies)):
-        plt.plot([df_frequencies["Track"][i], df_frequencies["Track"][i]],
-                 [df_frequencies["Min Frequency (Hz)"][i], df_frequencies["Max Frequency (Hz)"][i]],
-                 marker='o', color='r', linestyle='-', alpha=0.7)
+        plt.plot(
+            [df_frequencies["Track"][i], df_frequencies["Track"][i]],
+            [
+                df_frequencies["Min Frequency (Hz)"][i],
+                df_frequencies["Max Frequency (Hz)"][i],
+            ],
+            marker="o",
+            color="r",
+            linestyle="-",
+            alpha=0.7,
+        )
 
     plt.xticks(rotation=45, ha="right")
     plt.xlabel("Track")
     plt.ylabel("Frequency (Hz)")
     plt.title("Audio Frequency Ranges (Min to Max)")
     plt.show()
+
 
 if __name__ == "__main__":
     base_path = "data/raw"
@@ -83,7 +128,6 @@ if __name__ == "__main__":
                 print(f"Error processing {wav_file}: {e}")
     save_to_summary(data)
 
-
     df = pd.DataFrame(data)
 
     # Compute averages
@@ -100,20 +144,12 @@ if __name__ == "__main__":
     # df_durations = pd.DataFrame(duration_data)
     # save_info(duration_data, frequency_data)
 
-
     # Call the functions to generate plots
     # plot_durations(df_durations)
     # plot_frequencies(df_frequencies)
 
+    # print("Audio Frequency Ranges:")
+    # print(df_frequencies)
 
-    #print("Audio Frequency Ranges:")
-    #print(df_frequencies)
-
-    #print("\nAudio Durations:")
-    #print(df_durations)
-
-
-
-
-
-
+    # print("\nAudio Durations:")
+    # print(df_durations)
