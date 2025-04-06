@@ -83,8 +83,9 @@ def plot_metrics(all_labels, all_preds, class_names, label="Test"):
     class_names: List of class names corresponding to indices
     label: String label for the dataset 
     """
-    precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average=None)
-    
+    precision, recall, f1, support  = precision_recall_fscore_support(all_labels, all_preds, average=None)
+    print_metrics(precision, recall, f1, support, class_names)
+
     x = np.arange(len(class_names))  # Class indices
     width = 0.25  # Bar width
     
@@ -101,4 +102,21 @@ def plot_metrics(all_labels, all_preds, class_names, label="Test"):
     ax.legend()
     
     plt.tight_layout()
-    plt.show()
+    plt.show()  
+
+def print_metrics(precision, recall, f1, support, class_names):
+    for i, name in enumerate(class_names):
+        print(f"{name}:")
+        print(f"  Precision: {precision[i]:.4f}")
+        print(f"  Recall: {recall[i]:.4f}")
+        print(f"  F1-score: {f1[i]:.4f}")
+        print(f"  Support: {support[i]}")
+        print()
+
+    total_support = np.sum(support)
+    weighted_precision = np.sum(precision * support) / total_support
+    weighted_recall = np.sum(recall * support) / total_support
+    weighted_f1 = np.sum(f1 * support) / total_support
+    print(f"Weighted Precision: {weighted_precision:.4f}")
+    print(f"Weighted Recall: {weighted_recall:.4f}")
+    print(f"Weighted F1-score: {weighted_f1:.4f}")
