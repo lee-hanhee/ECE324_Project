@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import torch.nn.functional as F
+from torchinfo import summary  
 import sklearn.metrics as metrics
 import os
 from sklearn.model_selection import KFold
@@ -551,3 +552,10 @@ if __name__ == "__main__":
             model_path, new_dict, LABELS, interpret=False
         )
         print(f"Model loaded from {model_path}")
+
+    # Print Model Summary
+    # Create model instance
+    model = InstrumentClassifier(num_classes=14)
+    x = torch.randn(1, 1, 128, 221)
+    # Show model summary using torchinfo
+    summary(model, input_size=(1, 1, 128, 221))
