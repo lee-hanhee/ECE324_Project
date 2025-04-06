@@ -6,6 +6,7 @@ import seaborn as sns
 import yaml
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
 
 # Base path for raw data
 base_path = Path("data/raw")
@@ -104,12 +105,8 @@ print(f"\nTotal unique instrument classes processed: {len(set(instrument_labels)
 instrument_encoder = LabelEncoder()
 instrument_labels_encoded = instrument_encoder.fit_transform(instrument_labels)
 
-from sklearn.decomposition import PCA
-
 pca = PCA(n_components=50)  # Reduce dimensionality before UMAP
 pca_features = pca.fit_transform(feature_embeddings)
-
-
 
 # Apply UMAP with optimized hyperparameters
 reducer = umap.UMAP(n_components=2, n_neighbors=60, min_dist=0.4,metric="cosine", random_state=42)
@@ -139,5 +136,12 @@ plt.yticks(fontsize=14)
 
 plt.tight_layout()  # Adjust layout to fit elements within the figure
 
-plt.show()
+# Save figure to results/plots/umap
+output_path = Path("results/plots/umap/umap_projection_mfcc.png")
+output_path.parent.mkdir(parents=True, exist_ok=True)  # Create directory if it doesn't exist
+
+plt.savefig(output_path, dpi=300)
+print(f"UMAP plot saved to: {output_path}")
+
+plt.close()
 
