@@ -12,14 +12,18 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Instruments to combine
 instrument_list = ["Piano", "Drums", "Guitar", "Bass", "Strings"]
 
-# How many mixes per combination
+# Number of mixes to generate per instrument combination
 mixes_per_combination = 5  # You can increase this
 
-# Load all wav file paths from instrument folders
+# Load all .wav file paths from instrument folders
 instrument_files = {}
 for inst in instrument_list:
     inst_dir = os.path.join(INSTRUMENTS_DIR, inst)
-    wavs = sorted([os.path.join(inst_dir, f) for f in os.listdir(inst_dir) if f.endswith(".wav")])
+    wavs = sorted([
+        os.path.join(inst_dir, f)
+        for f in os.listdir(inst_dir)
+        if f.endswith(".wav")
+    ])
     instrument_files[inst] = wavs
 
 # Create combinations of 2, 3, and 4 instruments
@@ -29,11 +33,13 @@ for r in range(2, len(instrument_list) + 1):
 
         for i in range(mixes_per_combination):
             # Pick one random file per instrument in the combo
-            selected_files = [random.choice(instrument_files[inst]) for inst in combo]
+            selected_files = [
+                random.choice(instrument_files[inst]) for inst in combo
+            ]
 
-            # Load and mix
+            # Load and prepare signals
             signals = []
-            min_length = float('inf')
+            min_length = float("inf")
             sr = None
 
             for file_path in selected_files:
@@ -41,17 +47,16 @@ for r in range(2, len(instrument_list) + 1):
                 signals.append(y)
                 min_length = min(min_length, len(y))
 
-            # Trim all signals to the shortest one to align them
+            # Trim all signals to match shortest signal length
             signals = [s[:min_length] for s in signals]
 
-            # Mix by averaging (can change to summing or weighting)
+            # Mix by averaging (can modify to sum or use weights)
             mix = sum(signals) / len(signals)
 
-            # Output filename
+            # Output filename and save mixed signal
             output_name = f"{combo_name}_{i}.wav"
             output_path = os.path.join(OUTPUT_DIR, output_name)
 
-            # Save
             sf.write(output_path, mix, sr)
             print(f"Created: {output_name}")
 
