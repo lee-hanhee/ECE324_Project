@@ -4,8 +4,6 @@ import shutil
 from glob import glob
 from collections import defaultdict
 
-# === SETUP ===
-
 # Base directories
 BASE_DIR = "data"
 RAW_DIR = os.path.join(BASE_DIR, "raw")
@@ -26,8 +24,6 @@ else:
 instrument_counters = defaultdict(int)
 
 
-# === MAIN LOOP: Process each track ===
-
 for track_dir in track_dirs:
     metadata_path = os.path.join(track_dir, "metadata.yaml")
 
@@ -47,8 +43,6 @@ for track_dir in track_dirs:
 
     # Folder containing audio stem files
     stem_dir = os.path.join(track_dir, "stems")
-
-    # === PROCESS EACH STEM ===
 
     for stem_key, stem_info in stems.items():
         # Get instrument class label for this stem
@@ -89,5 +83,5 @@ for track_dir in track_dirs:
 
         print(f"Copied {wav_filename} -> {inst_class_lower}/{dest_filename}")
 
-# === DONE ===
+
 print("Done.")
