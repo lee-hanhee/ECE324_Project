@@ -10,7 +10,7 @@ import sklearn.metrics as metrics
 import os
 from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, random_split, Subset
-from visualizations import plot_metrics, plot_confusion_matrix, plot_confusion_bar
+from visualizations import plot_metrics, plot_confusion_matrix, plot_confusion_bar, show_saliency
 from processing import get_data
 from pathlib import Path
 from tqdm import tqdm
@@ -238,14 +238,59 @@ def get_model(train_val_data, train_val_length, LABELS, cross_validation = False
     
     return final_model
 
-def load_and_run_model(path_of_model, data_dict, LABELS):
+def generate_saliency_map(model, mel_spec, class_index, device=None):
+    model.eval()
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    mel_spec = mel_spec.to(device)
+    mel_spec.requires_grad_()
+
+    model.to(device)
+    output = model(mel_spec)
+    score = output[:, class_index].sum()  # Focus on one class score
+
+    score.backward()
+    saliency = mel_spec.grad.data.abs().squeeze().cpu().numpy()  # Get gradient magnitude
+    return saliency
+
+def interpret_full_audio(model, audio_path, LABELS, sample_rate=22050, n_mels=128):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    # 1. Load full waveform
+    waveform, _ = librosa.load(audio_path, sr=sample_rate)
+
+    # 2. Create Mel spectrogram
+    mel_transform = T.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)
+    mel_spec = mel_transform(torch.tensor(waveform).unsqueeze(0))
+    mel_spec = torch.log1p(mel_spec)  # log-scale for stability
+
+    mel_spec = mel_spec.unsqueeze(0)  # Add batch dimension
+
+    # 3. Forward pass
+    with torch.no_grad():
+        outputs = model(mel_spec.to(device))
+        probs = torch.sigmoid(outputs).cpu().squeeze().numpy()
+
+    # 4. Visualize saliency for relevant classes (excluding "no_music")
+    for idx, prob in enumerate(probs):
+        class_name = list(LABELS.keys())[idx]
+        if class_name == "no_music":
+            continue
+        if prob >= 0.5:
+            saliency = generate_saliency_map(model, mel_spec.clone(), idx, device=device)
+            show_saliency(mel_spec, saliency, class_name=class_name)
+
+def load_and_run_model(path_of_model, data_dict, LABELS, interpret = True):
     dataset = BabySlakhDataset(data_dict, num_classes=len(LABELS))
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
     model = InstrumentClassifier(num_classes=len(LABELS))
     model.load_state_dict(torch.load(path_of_model))
 
-    accuracy, predictions = evaluate(model, dataloader, label="Predict", display_conf_matrix=True)
+    accuracy, predictions = evaluate(model, dataloader, label="Predict", display_conf_matrix=False)
     class_counts = np.sum(predictions, axis=0)
         
     # Classify a label as True if it appears more than the threshold
@@ -256,12 +301,17 @@ def load_and_run_model(path_of_model, data_dict, LABELS):
         if song_label[num] == 1:
             pred_labels.append(label)
 
+    if interpret:
+        for audio_path in data_dict.keys():
+            print(f"Interpreting audio: {audio_path}")
+            interpret_full_audio(model, audio_path, LABELS)
+
     return accuracy, pred_labels
 
 if __name__ == "__main__":
     model_path = "models/instrument_classification/saved_model.pth"
-    save_model = True
-    train_model = True
+    save_model = False
+    train_model = False
     hyperparameters = {
         "epochs": 10,
         "batch_size": 8,
@@ -304,4 +354,5 @@ if __name__ == "__main__":
         evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
     else:
         new_dict, LABELS = get_data(percent=0.02, seed=1) 
-        _, _ = load_and_run_model(model_path, new_dict, LABELS)
+        _, _ = load_and_run_model(model_path, new_dict, LABELS, interpret=True)
+

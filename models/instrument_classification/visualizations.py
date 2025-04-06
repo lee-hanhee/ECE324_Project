@@ -84,7 +84,7 @@ def plot_metrics(all_labels, all_preds, class_names, label="Test"):
     label: String label for the dataset 
     """
     precision, recall, f1, support  = precision_recall_fscore_support(all_labels, all_preds, average=None)
-    print_metrics(precision, recall, f1, support, class_names)
+    # print_metrics(precision, recall, f1, support, class_names)
 
     x = np.arange(len(class_names))  # Class indices
     width = 0.25  # Bar width
@@ -120,3 +120,17 @@ def print_metrics(precision, recall, f1, support, class_names):
     print(f"Weighted Precision: {weighted_precision:.4f}")
     print(f"Weighted Recall: {weighted_recall:.4f}")
     print(f"Weighted F1-score: {weighted_f1:.4f}")
+
+def show_saliency(mel_spec, saliency, class_name, save_path=None):
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+
+    ax[0].imshow(mel_spec.squeeze().cpu().numpy(), origin='lower', aspect='auto', cmap='viridis')
+    ax[0].set_title("Mel Spectrogram")
+
+    ax[1].imshow(saliency, origin='lower', aspect='auto', cmap='hot')
+    ax[1].set_title(f"Saliency Map ({class_name})")
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    plt.show()
