@@ -63,6 +63,7 @@ class BabySlakhDataset(Dataset):
     def __init__(
         self,
         stem_dict,
+        LABELS,
         segment_duration=2.0,
         sample_rate=22050,
         n_mels=128,
@@ -83,6 +84,7 @@ class BabySlakhDataset(Dataset):
         self.mel_transform = T.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)
         self.segments = []
         self.num_classes = num_classes
+        self.LABELS = LABELS
 
         for path, labels in stem_dict.items():
             waveform, sr = librosa.load(path, sr=self.sample_rate)
@@ -97,7 +99,7 @@ class BabySlakhDataset(Dataset):
                 energy = np.mean(np.abs(segment))
                 if energy < energy_threshold:
                     multi_hot = torch.zeros(num_classes)  # No music → all zeros
-                    multi_hot[LABELS["no_music"]] = 1
+                    multi_hot[self.LABELS["no_music"]] = 1
                 else:
                     multi_hot = torch.zeros(num_classes)
                     for label in labels:  # Set 1s for multiple labels
