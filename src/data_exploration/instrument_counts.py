@@ -59,9 +59,9 @@ def plot_combined_instrument_distribution(instrument_distributions):
     # Plot single combined bar graph
     plt.figure(figsize=(12, 6))
     plt.bar(sorted_counts.keys(), sorted_counts.values())
-    plt.title("Overall Instrument Class Distribution Across All Tracks")
-    plt.xlabel("Instrument Classes")
-    plt.ylabel("Total Count")
+    plt.title("Overall Instrument Class Distribution Across All Tracks", fontsize=18)
+    plt.xlabel("Instrument Classes", fontsize=15)
+    plt.ylabel("Total Count", fontsize=15)
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
 
