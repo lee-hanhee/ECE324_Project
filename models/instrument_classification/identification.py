@@ -739,6 +739,7 @@ if __name__ == "__main__":
     model_arch_path = "models/instrument_classification/model_v2.pth"
     save_model = True
     train_model = True
+    interpret = True
     
     # Configure hyperparameters
     hyperparameters = {
@@ -825,6 +826,13 @@ if __name__ == "__main__":
         test_loader = DataLoader(test_data, batch_size=8, shuffle=False)
         test_accuracy, _ = evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
         print(f"Final Test Accuracy: {test_accuracy*100:.2f}%")
+
+        if interpret:
+            # for audio_path in inst_dict.keys():
+            for i in range(10):
+                audio_path = list(inst_dict.keys())[i]
+                print(f"Interpreting audio: {audio_path}")
+                interpret_full_audio(final_model, audio_path, LABELS)
     else:
         # Load a pre-trained model for inference
         new_dict, LABELS = get_data(percent=0.02, seed=1)
