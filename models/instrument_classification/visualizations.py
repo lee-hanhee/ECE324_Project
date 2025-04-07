@@ -134,7 +134,7 @@ def plot_metrics(
     precision, recall, f1, support = precision_recall_fscore_support(
         all_labels, all_preds, average=None
     )
-    # print_metrics(precision, recall, f1, support, class_names)
+    print_metrics(precision, recall, f1, support, class_names)
 
     x = np.arange(len(class_names))  # Class indices
     width = 0.25  # Bar width

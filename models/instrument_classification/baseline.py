@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     # === Train on train set ===
     print("\nTraining baseline model...\n")
-    train_baseline(model, train_loader, num_epochs=5)
+    train_baseline(model, train_loader, num_epochs=10)
 
     # === Evaluate on test set ===
     print("\nEvaluating baseline model on TEST set...\n")
