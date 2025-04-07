@@ -1,22 +1,39 @@
 import os
 from pathlib import Path
+
 import librosa
 import soundfile as sf
 
 # Assumes current directory is the root of the project
 RAW_DATA_PATH = Path("data/raw")
 PROCESSED_DATA_PATH = Path("data/processed/yamnet")
-TARGET_SR = 16000
-SEGMENT_DURATION = 20  # seconds
+TARGET_SR = 16000  # Sample rate in Hz
+SEGMENT_DURATION = 20  # Seconds
 
 
 def preprocess_audio(input_path: Path, output_path: Path, target_sr: int):
-    """Load audio, resample to mono at target sample rate, and save as WAV."""
+    """
+    Load audio, resample to mono at target sample rate, and save as WAV.
+    
+    Args:
+        input_path: Path to input audio file
+        output_path: Path to save processed audio
+        target_sr: Target sample rate in Hz
+    """
     audio, _ = librosa.load(input_path, sr=target_sr, mono=True)
     sf.write(output_path, audio, samplerate=target_sr)
 
 
 def split_audio(audio_path: Path, segment_folder: Path, target_sr: int, segment_duration: int):
+    """
+    Split audio file into segments of equal duration.
+    
+    Args:
+        audio_path: Path to audio file to split
+        segment_folder: Folder to save segments
+        target_sr: Sample rate of the audio
+        segment_duration: Duration of each segment in seconds
+    """
     audio, _ = librosa.load(audio_path, sr=target_sr, mono=True)
     segment_samples = segment_duration * target_sr
 

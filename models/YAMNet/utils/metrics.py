@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Calculate Weighted Metrics Script
+Calculate Weighted Metrics Script.
 
-This script reads existing precision, recall, and F1 scores from saved_data_v2
-and calculates weighted metrics based on support values. Results are saved to saved_data_v3.
+This script reads existing precision, recall, and F1 scores from model metrics
+and calculates weighted metrics based on support values. Results are saved to
+the specified output directory.
 
 The weighting is done according to the following formula:
     weighted_metric = Σ(metric_i * support_i) / Σ(support_i)
@@ -16,10 +17,12 @@ Where:
 
 import os
 import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
+
 
 def load_metrics_from_json(json_path):
     """
@@ -35,6 +38,7 @@ def load_metrics_from_json(json_path):
         metrics = json.load(f)
     return metrics
 
+
 def load_metrics_from_csv(csv_path):
     """
     Load metrics from a CSV file.
@@ -47,6 +51,7 @@ def load_metrics_from_csv(csv_path):
     """
     metrics_df = pd.read_csv(csv_path)
     return metrics_df
+
 
 def calculate_weighted_metrics(class_metrics):
     """
@@ -90,6 +95,7 @@ def calculate_weighted_metrics(class_metrics):
         'total_support': int(total_support)
     }
 
+
 def analyze_metrics_json(json_file, output_dir):
     """
     Analyze metrics from a JSON file and save weighted metrics.
@@ -97,6 +103,9 @@ def analyze_metrics_json(json_file, output_dir):
     Args:
         json_file (str): Path to the JSON file.
         output_dir (str): Directory to save the results.
+    
+    Returns:
+        tuple: Model name and weighted metrics dictionary.
     """
     # Load metrics
     model_name = os.path.basename(json_file).replace('_metrics.json', '')
@@ -122,6 +131,7 @@ def analyze_metrics_json(json_file, output_dir):
     
     return model_name, weighted_metrics
 
+
 def analyze_all_models(input_dir, output_dir):
     """
     Analyze metrics for all models in the input directory.
@@ -145,7 +155,8 @@ def analyze_all_models(input_dir, output_dir):
                 weighted_metrics = calculate_weighted_metrics(class_metrics)
                 
                 # Save individual model weighted metrics
-                model_output_file = os.path.join(output_dir, f'{model_name}_weighted_metrics.json')
+                model_output_file = os.path.join(
+                    output_dir, f'{model_name}_weighted_metrics.json')
                 with open(model_output_file, 'w') as f:
                     json.dump(weighted_metrics, f, indent=4)
                 
@@ -167,15 +178,18 @@ def analyze_all_models(input_dir, output_dir):
             
             # Create and save summary dataframe
             summary_df = pd.DataFrame(summary_data)
-            summary_df.to_csv(os.path.join(output_dir, 'weighted_metrics_summary.csv'), index=False)
+            summary_csv = os.path.join(output_dir, 'weighted_metrics_summary.csv')
+            summary_df.to_csv(summary_csv, index=False)
             
             # Create and save consolidated JSON
-            all_weighted_metrics = {row['Model']: {
-                'weighted_precision': row['Weighted Precision'],
-                'weighted_recall': row['Weighted Recall'],
-                'weighted_f1': row['Weighted F1'],
-                'total_support': row['Total Support']
-            } for row in summary_data}
+            all_weighted_metrics = {
+                row['Model']: {
+                    'weighted_precision': row['Weighted Precision'],
+                    'weighted_recall': row['Weighted Recall'],
+                    'weighted_f1': row['Weighted F1'],
+                    'total_support': row['Total Support']
+                } for row in summary_data
+            }
             
             with open(os.path.join(output_dir, 'weighted_metrics.json'), 'w') as f:
                 json.dump(all_weighted_metrics, f, indent=4)
@@ -197,48 +211,92 @@ def analyze_all_models(input_dir, output_dir):
     
     # Create and save summary dataframe
     summary_df = pd.DataFrame(summary_data)
-    summary_df.to_csv(os.path.join(output_dir, 'weighted_metrics_summary.csv'), index=False)
+    summary_csv = os.path.join(output_dir, 'weighted_metrics_summary.csv')
+    summary_df.to_csv(summary_csv, index=False)
+
+
+def visualize_weighted_metrics(weighted_metrics_file, output_dir=None):
+    """
+    Create a visualization of weighted metrics for comparison.
     
-    # Create visualization
-    plt.figure(figsize=(10, 6))
-    bar_width = 0.25
-    indices = np.arange(len(summary_data))
+    Args:
+        weighted_metrics_file (str): Path to the CSV file with weighted metrics.
+        output_dir (str, optional): Directory to save the visualization.
+    """
+    # Load metrics
+    metrics_df = pd.read_csv(weighted_metrics_file)
     
-    plt.bar(indices, [d['Weighted Precision'] for d in summary_data], 
-            bar_width, label='Precision', color='blue', alpha=0.7)
-    plt.bar(indices + bar_width, [d['Weighted Recall'] for d in summary_data], 
-            bar_width, label='Recall', color='green', alpha=0.7)
-    plt.bar(indices + 2*bar_width, [d['Weighted F1'] for d in summary_data], 
-            bar_width, label='F1', color='red', alpha=0.7)
+    # Create a bar chart for comparison
+    fig, ax = plt.subplots(figsize=(10, 6))
     
-    plt.xlabel('Model')
-    plt.ylabel('Score')
-    plt.title('Weighted Metrics Comparison')
-    plt.xticks(indices + bar_width, [d['Model'] for d in summary_data])
-    plt.legend()
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    # Get model names
+    models = metrics_df['Model'].values
+    
+    # Set up bar positions
+    x = np.arange(len(models))
+    width = 0.25
+    
+    # Plot bars for each metric
+    ax.bar(x - width, metrics_df['Weighted Precision'], width, 
+           label='Weighted Precision', color='#5DA5DA')
+    ax.bar(x, metrics_df['Weighted Recall'], width, 
+           label='Weighted Recall', color='#FAA43A')
+    ax.bar(x + width, metrics_df['Weighted F1'], width, 
+           label='Weighted F1', color='#60BD68')
+    
+    # Add labels and title
+    ax.set_xlabel('Model')
+    ax.set_ylabel('Score')
+    ax.set_title('Weighted Metrics Comparison')
+    ax.set_xticks(x)
+    ax.set_xticklabels(models)
+    ax.legend()
+    
+    # Add value labels on top of bars
+    for i, model in enumerate(models):
+        ax.text(i - width, metrics_df.loc[metrics_df['Model'] == model, 'Weighted Precision'].values[0] + 0.01,
+                f"{metrics_df.loc[metrics_df['Model'] == model, 'Weighted Precision'].values[0]:.3f}",
+                ha='center', va='bottom', rotation=0, fontsize=9)
+        
+        ax.text(i, metrics_df.loc[metrics_df['Model'] == model, 'Weighted Recall'].values[0] + 0.01,
+                f"{metrics_df.loc[metrics_df['Model'] == model, 'Weighted Recall'].values[0]:.3f}",
+                ha='center', va='bottom', rotation=0, fontsize=9)
+        
+        ax.text(i + width, metrics_df.loc[metrics_df['Model'] == model, 'Weighted F1'].values[0] + 0.01,
+                f"{metrics_df.loc[metrics_df['Model'] == model, 'Weighted F1'].values[0]:.3f}",
+                ha='center', va='bottom', rotation=0, fontsize=9)
+    
     plt.tight_layout()
     
-    plt.savefig(os.path.join(output_dir, 'weighted_metrics_comparison.png'))
-    print(f'Weighted metrics visualization saved to {os.path.join(output_dir, "weighted_metrics_comparison.png")}')
+    # Save the figure if output_dir is provided
+    if output_dir is not None:
+        os.makedirs(output_dir, exist_ok=True)
+        fig_path = os.path.join(output_dir, 'weighted_metrics_comparison.png')
+        plt.savefig(fig_path, dpi=300, bbox_inches='tight')
+        print(f'Visualization saved to {fig_path}')
+    
+    plt.close()
+
 
 def main():
+    """Run the weighted metrics calculation and visualization."""
     # Define directories
-    input_dir = 'models/pretrained/saved_data_v2'
-    output_dir = 'models/pretrained/saved_data_v3'
+    input_dir = 'models/yamnet/results/metrics'
+    output_dir = 'models/yamnet/results/metrics'
     
-    # Create output directory
+    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
-    
-    print(f'Calculating weighted metrics from {input_dir}')
-    print(f'Saving results to {output_dir}')
-    print('-' * 50)
     
     # Analyze all models
     analyze_all_models(input_dir, output_dir)
     
-    print('-' * 50)
-    print(f'All weighted metrics saved to {output_dir}')
+    # Visualize results
+    weighted_metrics_file = os.path.join(output_dir, 'weighted_metrics_summary.csv')
+    if os.path.exists(weighted_metrics_file):
+        visualize_weighted_metrics(weighted_metrics_file, output_dir)
+    else:
+        print(f"Warning: Weighted metrics summary file not found at {weighted_metrics_file}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main() 
