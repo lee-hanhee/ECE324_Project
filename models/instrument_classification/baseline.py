@@ -40,7 +40,7 @@ class BaselineLinearClassifier(nn.Module):
         return self.linear(x)
 
 
-def train_baseline(model, dataloader, num_epochs=5, lr=1e-3):
+def train_baseline(model, dataloader, num_epochs=10, lr=1e-3):
     """Train the baseline model.
 
     Args:
