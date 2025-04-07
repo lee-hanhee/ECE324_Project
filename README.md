@@ -153,7 +153,3 @@ The visual analysis of model performance is available in the `models/yamnet/resu
 ## 📝 License
 
 This project is licensed under the terms of the license included in the repository.
-
-## 📞 Contact
-
-For questions or feedback about this project, please open an issue in the repository.
