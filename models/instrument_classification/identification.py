@@ -418,7 +418,7 @@ def run_cross_validation(
     train_val_len, 
     train_val_data, 
     k=5, 
-    fold_epochs=5,
+    fold_epochs=3,
     patience=3,
     scheduler_type="plateau"
 ):
@@ -523,7 +523,7 @@ def get_model(
     cross_validation: bool = False,
     k_fold_splits: int = 5,
     fold_epochs: int = 5,
-    final_epochs: int = 15,
+    final_epochs: int = 10,
     padding: int = 1,
     dropout: float = 0.3,
     kernel_size: int = 3,
@@ -736,7 +736,7 @@ def load_and_run_model(
 
 if __name__ == "__main__":
     model_path = "models/instrument_classification/saved_model.pth"
-    model_arch_path = "models/instrument_classification/model_v2.pth"
+    model_arch_path = "models/instrument_classification/model_v1.pth"
     save_model = True
     train_model = True
     interpret = True
@@ -763,7 +763,7 @@ if __name__ == "__main__":
 
     if train_model:
         # Load and prepare data
-        inst_dict, LABELS = get_data(percent=0.05, seed=42)
+        inst_dict, LABELS = get_data(percent=0.5, seed=42)
         hyperparameters["num_classes"] = len(LABELS)
         
         print(f"Training on {len(inst_dict)} audio files with {len(LABELS)} instrument classes")
@@ -827,12 +827,12 @@ if __name__ == "__main__":
         test_accuracy, _ = evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
         print(f"Final Test Accuracy: {test_accuracy*100:.2f}%")
 
-        if interpret:
-            # for audio_path in inst_dict.keys():
-            for i in range(10):
-                audio_path = list(inst_dict.keys())[i]
-                print(f"Interpreting audio: {audio_path}")
-                interpret_full_audio(final_model, audio_path, LABELS)
+        # if interpret:
+        #     # for audio_path in inst_dict.keys():
+        #     for i in range(10):
+        #         audio_path = list(inst_dict.keys())[i]
+        #         print(f"Interpreting audio: {audio_path}")
+        #         interpret_full_audio(final_model, audio_path, LABELS)
     else:
         # Load a pre-trained model for inference
         new_dict, LABELS = get_data(percent=0.02, seed=1)
