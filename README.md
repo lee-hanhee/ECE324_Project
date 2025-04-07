@@ -143,7 +143,6 @@ Our instrument classification models achieve significant accuracy for instrument
 | Model                  | Accuracy | 
 | ---------------------- | -------- | 
 | YAMNet + LogReg        | ~73%     | 
-| YAMNet + MLP           | ~38%     | 
 | Multi-label Classifier | ~82%     | 
 
 _Note: The exact metrics will vary based on your specific dataset and model configurations._
