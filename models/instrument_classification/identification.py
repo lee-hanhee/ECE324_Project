@@ -707,7 +707,7 @@ def load_and_run_model(
         accuracy: Accuracy of the model on the dataset.
         pred_labels: List of predicted labels for the audio files.
     """
-    dataset = BabySlakhDataset(data_dict, num_classes=len(LABELS))
+    dataset = BabySlakhDataset(data_dict, num_classes=len(LABELS), LABELS = LABELS)
     dataloader = DataLoader(dataset, batch_size=8, shuffle=False)
 
     model = InstrumentClassifier(num_classes=len(LABELS))
@@ -737,8 +737,8 @@ def load_and_run_model(
 if __name__ == "__main__":
     model_path = "models/instrument_classification/saved_model.pth"
     model_arch_path = "models/instrument_classification/model_v1.pth"
-    save_model = True
-    train_model = True
+    save_model = False
+    train_model = False
     interpret = True
     
     # Configure hyperparameters
@@ -763,7 +763,7 @@ if __name__ == "__main__":
 
     if train_model:
         # Load and prepare data
-        inst_dict, LABELS = get_data(percent=0.5, seed=42)
+        inst_dict, LABELS = get_data(percent=0.8, seed=42)
         hyperparameters["num_classes"] = len(LABELS)
         
         print(f"Training on {len(inst_dict)} audio files with {len(LABELS)} instrument classes")
@@ -827,17 +827,11 @@ if __name__ == "__main__":
         test_accuracy, _ = evaluate(final_model, test_loader, label="Test", display_conf_matrix=True)
         print(f"Final Test Accuracy: {test_accuracy*100:.2f}%")
 
-        # if interpret:
-        #     # for audio_path in inst_dict.keys():
-        #     for i in range(10):
-        #         audio_path = list(inst_dict.keys())[i]
-        #         print(f"Interpreting audio: {audio_path}")
-        #         interpret_full_audio(final_model, audio_path, LABELS)
     else:
         # Load a pre-trained model for inference
-        new_dict, LABELS = get_data(percent=0.02, seed=1)
+        new_dict, LABELS = get_data(percent=0.1, seed=1)
         accuracy, pred_labels = load_and_run_model(
-            model_path, new_dict, LABELS, interpret=False
+            model_path, new_dict, LABELS, interpret=True
         )
         print(f"Model loaded from {model_path}")
         print(f"Predicted instruments: {', '.join(pred_labels)}")
