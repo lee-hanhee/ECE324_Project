@@ -137,7 +137,7 @@ python src/data_exploration/umap_exploration_mfcc.py
 python src/data_exploration/instrument_counts.py
 
 # Generate spectrograms
-python src/data_exploration/spectrogam.py
+python src/data_exploration/spectrogram.py
 ```
 
 ### Dataset Requirements
