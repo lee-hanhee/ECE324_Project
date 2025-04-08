@@ -109,7 +109,7 @@ def evaluate_baseline(model, dataloader, label_names):
 
 if __name__ == "__main__":
     # === Load dataset ===
-    data_dict, LABELS = get_data(percent=0.2, seed=42)
+    data_dict, LABELS = get_data(percent=0.5, seed=42)
     full_dataset = BabySlakhDataset(data_dict, LABELS=LABELS, num_classes=len(LABELS))
 
     # === Split into train and test ===
