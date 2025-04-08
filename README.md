@@ -30,51 +30,62 @@ This project provides a robust framework for automatic instrument classification
 
 ```
 ├── data/                           # Source audio files with instrument labels
-│   ├── raw/                        # Raw audio recordings
-│   └── processed/                  # Processed audio files for models
-│       └── yamnet/                 # Audio processed for YAMNet
+│   ├── raw/                        # Raw audio recordings from BabySlakH dataset
+│   └── instruments/                # Instrument audio files for each instrument
+├── experiments/                    # Experimental notebooks and scripts
+│   ├── MultilabelClassification.ipynb  # Multi-label classification experiments
+│   ├── wavenet.ipynb                   # WaveNet experimentation
+│   └── yamnet_example.ipynb            # YAMNet examples and implementation
 ├── models/                         # Implementation of various classification models
-│   ├── yamnet/                     # YAMNet-based models and utilities
-│   │   ├── core/                   # Core classifier implementations
-│   │   │   ├── instrument_classifier.py    # Base classifier using YAMNet embeddings
-│   │   │   └── instrument_classifier_v2.py # Enhanced classifier with detailed metrics
-│   │   ├── pretrained/             # Pretrained model implementations
-│   │   │   ├── segment_predictor.py        # Audio segment classification with YAMNet
-│   │   │   └── yamnet_example.ipynb        # YAMNet example notebook
-│   │   ├── utils/                  # Utility functions
-│   │   │   └── metrics.py                  # Tools for calculating weighted metrics
-│   │   ├── data/                   # Processed data storage
-│   │   ├── results/                # Results and visualizations
-│   │   │   ├── metrics/            # Performance metrics
-│   │   │   ├── confusion_matrices/ # Confusion matrix visualizations
-│   │   │   └── predictions/        # YAMNet prediction results
-│   │   └── README.md               # Documentation for YAMNet models
-│   ├── WaveNet/                    # WaveNet model implementation
-│   │   └── SpectrogramUNet.ipynb   # U-Net model for spectrograms
+│   ├── instrument_classification/  # Custom multi-label instrument classifier
+│   │   ├── identification.py       # Main instrument identification implementation
+│   │   ├── processing.py           # Audio processing for identification
+│   │   ├── visualizations.py       # Visualization tools for model results
+│   │   ├── baseline.py             # Baseline classifier implementation
+│   │   ├── model_v1.pth            # Trained model weights (version 1)
+│   │   ├── model_v2.pth            # Trained model weights (version 2)
+│   │   ├── saved_model.pth         # Latest trained model weights
+│   │   └── results/                # Classification results and metrics
 │   ├── NMF/                        # Non-negative Matrix Factorization experiments
-│   │   └── nmf_trial.ipynb         # NMF experimentation notebook
-│   └── instrument_classification/  # Custom multi-label instrument classifier
+│   ├── SpectrogramUNet/            # Spectrogram U-Net model implementation
+│   ├── YAMNet/                     # YAMNet-based models and utilities
+│   │   ├── checkpoints/            # Saved model checkpoints
+│   │   ├── pretrained_no_fine_tuning/ # Pretrained model implementations
+│   │   ├── results/                # Results and visualizations
+│   │   ├── utils/                  # Utility functions for YAMNet
+│   │   └── instrument_classifier_v2.py # Enhanced classifier with detailed metrics
+│   └── comparison.py               # Script for comparing model performance
+├── results/                        # Generated visualizations and metrics
+│   ├── metrics/                    # Model performance evaluation metrics
+│   │   ├── track_instruments.csv   # Instrument labels for each track
+│   │   ├── inst_counts.txt         # Counts of instruments in dataset
+│   │   └── data_summary.csv        # Summary statistics of the dataset
+│   ├── plots/                      # Generated plots and visualizations
+│   │   ├── umap/                   # UMAP projections of audio features
+│   │   └── inst_dist/              # Instrument distribution visualizations
+│   ├── spectrograms/               # Generated spectrograms for analysis
+│   ├── waveforms/                  # Audio waveform visualizations
+│   ├── yamnet_predictions/         # Output predictions from YAMNet model
+│   ├── Audio Frequency Ranges.png  # Audio frequency range analysis
+│   ├── AudioTrackDurations.png     # Track duration statistics
+│   ├── InstruNETYamNETf1.png       # F1 score comparison visualization
+│   └── volume_boxplot.png          # Box plot of volume statistics
+│   ├── volume_histogram.png        # Volume distribution analysis
 ├── src/                            # Source code for data processing and exploration
 │   ├── data_exploration/           # Scripts for analyzing the dataset
-│   │   ├── umap_exploration_mfcc.py    # UMAP visualization with MFCCs
-│   │   ├── umap_exploration_basic.py   # Basic UMAP visualization
-│   │   ├── spectrogam.py              # Spectrogram generation and analysis
-│   │   ├── instrument_counts.py       # Analysis of instrument distribution
-│   │   ├── instrumentation.py         # Tools for instrument data analysis
-│   │   ├── figures.py                 # Visualization utilities
-│   │   └── audio_exploration.py       # Audio data exploration
+│   │   ├── audio_exploration.py    # Audio data analysis and visualization
+│   │   ├── figures.py              # Visualization utilities and plot functions
+│   │   ├── instrument_counts.py    # Analysis of instrument distribution
+│   │   ├── instrumentation.py      # Tools for instrument data analysis
+│   │   ├── spectrogam.py           # Spectrogram generation and analysis
+│   │   ├── umap_exploration_basic.py  # Basic UMAP dimensionality reduction
+│   │   └── umap_exploration_mfcc.py   # UMAP visualization with MFCCs
 │   ├── data_processing_yamnet/     # Preprocessing for YAMNet compatibility
 │   │   ├── yamnet_preprocessing.py            # YAMNet audio preprocessing
 │   │   └── yamnet_individual_instr_preprocessing.py  # Instrument-specific processing
 │   └── instrument data preprocessing/ # Tools for audio preprocessing
-├── experiments/                    # Experimental notebooks and scripts
-│   ├── MultilabelClassification.ipynb  # Multi-label classification experiments
-│   └── wavenet.ipynb                   # WaveNet experimentation
-├── results/                        # Generated visualizations and metrics
-│   ├── plots/                      # Generated plots and visualizations
-│   │   └── umap/                   # UMAP projections of audio features
-│   ├── metrics/                    # Model performance evaluation metrics
-│   └── yamnet_predictions/         # Output predictions from YAMNet model
+│       ├── instrument_extraction.py  # Extraction of individual instruments
+│       └── combined_data.py          # Combining and processing instrument data
 ├── requirements.txt                # List of required Python packages
 ├── LICENSE                         # Project license
 └── README.md                       # This file
@@ -140,10 +151,10 @@ python src/data_exploration/spectrogam.py
 
 Our instrument classification models achieve significant accuracy for instrument recognition tasks:
 
-| Model                  | Accuracy | 
-| ---------------------- | -------- | 
-| YAMNet + LogReg        | ~73%     | 
-| Multi-label Classifier | ~82%     | 
+| Model                  | Accuracy |
+| ---------------------- | -------- |
+| YAMNet + LogReg        | ~73%     |
+| Multi-label Classifier | ~82%     |
 
 _Note: The exact metrics will vary based on your specific dataset and model configurations._
 
